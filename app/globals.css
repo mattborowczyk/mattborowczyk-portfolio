@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Override with your brand palette once design is ready */
+    --color-bg: theme("colors.stone.50");
+    --color-text: theme("colors.stone.900");
+    --color-muted: theme("colors.stone.500");
+    --color-border: theme("colors.stone.200");
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-stone-50 text-stone-900 antialiased;
+  }
+}
+
+@layer components {
+  /* Reusable prose block for Sanity portable text */
+  .prose-jewelry {
+    @apply prose prose-stone max-w-none;
+  }
+}
