@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import RenderPlaceholder from "@/components/render-placeholder";
+import { CtaLink } from "@/components/ui/cta";
 import { studio } from "@/lib/content";
 
 export const metadata: Metadata = {
@@ -45,12 +45,9 @@ export default function StudioPage() {
             ))}
           </dl>
 
-          <Link
-            href="/contact"
-            className="mt-[34px] inline-block bg-ink px-7 py-[15px] font-sans text-[12px] font-bold uppercase tracking-[0.12em] text-bone transition-colors hover:bg-gold"
-          >
+          <CtaLink href="/contact" className="mt-[34px]">
             Start a commission
-          </Link>
+          </CtaLink>
         </div>
       </div>
     </div>

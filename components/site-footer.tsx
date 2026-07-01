@@ -13,7 +13,7 @@ export default function SiteFooter() {
       >
         @{site.name}
       </a>
-      <span>© 2026 — Made to order</span>
+      <span>© {new Date().getFullYear()} — Made to order</span>
     </footer>
   );
 }

@@ -117,6 +117,7 @@ export default function NewsletterCard() {
             <input
               type="email"
               required
+              aria-label="Email address"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"

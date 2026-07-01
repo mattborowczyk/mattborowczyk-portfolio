@@ -10,7 +10,10 @@ const rowClass =
 
 function Arrow() {
   return (
-    <span className="font-mono text-[9px] tracking-[0.1em] text-label-lightest">
+    <span
+      aria-hidden="true"
+      className="font-mono text-[9px] tracking-[0.1em] text-label-lightest"
+    >
       →
     </span>
   );
@@ -78,7 +81,7 @@ export default function LinksHub() {
         </div>
 
         <div className="mt-[52px] font-mono text-[9px] uppercase tracking-[0.16em] text-label-lightest">
-          © 2026
+          © {new Date().getFullYear()}
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { CtaAnchor } from "@/components/ui/cta";
 import { commission, contactDetails } from "@/lib/content";
 import { commissionMailto } from "@/lib/site";
 
@@ -81,12 +82,9 @@ export default function ContactPage() {
           ))}
         </dl>
 
-        <a
-          href={commissionMailto("Commission Enquiry")}
-          className="inline-block bg-ink px-7 py-[15px] font-sans text-[12px] font-bold uppercase tracking-[0.12em] text-bone transition-colors hover:bg-gold"
-        >
+        <CtaAnchor href={commissionMailto("Commission Enquiry")}>
           Start a commission →
-        </a>
+        </CtaAnchor>
       </section>
     </div>
   );
