@@ -50,8 +50,10 @@ async function withFallback<T>(
     const value = await fetcher();
     if (value == null || isEmpty(value)) return seed;
     return value;
-  } catch {
-    // Never let a CMS hiccup take the site down — fall back to the seed.
+  } catch (error) {
+    // Never let a CMS hiccup take the site down — fall back to the seed, but
+    // surface the failure so a misconfigured/flaky Sanity is observable.
+    console.error("[sanity] fetch failed, using local seed:", error);
     return seed;
   }
 }
