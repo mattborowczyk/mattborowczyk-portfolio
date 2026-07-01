@@ -4,20 +4,23 @@ import { useState } from "react";
 import Link from "next/link";
 
 import { commissionMailto } from "@/lib/site";
-import {
-  type Product,
-  materialLabel,
-  productIndex,
-  productViews,
-} from "@/lib/products";
+import { type Product, materialLabel, productViews } from "@/lib/products";
 import { cn } from "@/lib/utils";
 
 /**
  * Full-bleed editorial product page. The three bottom-right markers switch
- * the placeholder "view" tone — a stand-in for a real image gallery.
+ * the placeholder "view" tone — a stand-in for a real image gallery. `index`
+ * is the piece's position in the ordered run, used to pick placeholder tones
+ * so they stay consistent with the catalogue.
  */
-export default function ProductView({ product }: { product: Product }) {
-  const views = productViews(productIndex(product.ref));
+export default function ProductView({
+  product,
+  index,
+}: {
+  product: Product;
+  index: number;
+}) {
+  const views = productViews(index);
   const [active, setActive] = useState(0);
 
   const specLine = [

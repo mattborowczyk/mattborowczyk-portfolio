@@ -1,6 +1,5 @@
 import CatalogueRun from "@/components/catalogue-run";
-import { categories } from "@/lib/site";
-import { products } from "@/lib/products";
+import { getProducts, getSettings } from "@/sanity/lib/fetch-data";
 
 export const revalidate = 60; // ISR
 
@@ -10,9 +9,12 @@ export default async function CataloguePage({
   searchParams: Promise<{ filter?: string }>;
 }) {
   const { filter: raw } = await searchParams;
+  const [products, settings] = await Promise.all([
+    getProducts(),
+    getSettings(),
+  ]);
   const filter =
-    raw && (categories as readonly string[]).includes(raw) ? raw : "Shop all";
+    raw && settings.categories.includes(raw) ? raw : "Shop all";
 
-  // Phase 3 swaps `products` for a Sanity fetch with fallback to this seed.
   return <CatalogueRun products={products} filter={filter} />;
 }

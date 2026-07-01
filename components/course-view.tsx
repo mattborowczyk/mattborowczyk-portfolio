@@ -2,22 +2,43 @@
 
 import RenderPlaceholder from "@/components/render-placeholder";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { type Course, courseFormat, courses } from "@/lib/courses";
+import { type Course, courseFormat } from "@/lib/courses";
 
-/** Disabled enrol button — no checkout URL yet (renders, non-functional). */
+/**
+ * Enrol CTA. When a checkout URL exists it renders a real external link;
+ * otherwise it stays disabled ("opening soon"). Seed data has no URL yet, so
+ * without a connected CMS this always renders disabled — as before.
+ */
 function EnrolButton({
   label,
+  href,
   full = false,
 }: {
   label: string;
+  href?: string | null;
   full?: boolean;
 }) {
+  const base = `${full ? "block w-full" : "inline-block"} bg-ink px-8 py-4 text-center font-sans text-[12px] font-bold uppercase tracking-[0.12em] text-bone`;
+
+  if (href) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        className={`${base} transition-colors hover:bg-gold`}
+      >
+        {label}
+      </a>
+    );
+  }
+
   return (
     <button
       type="button"
       disabled
       title="Enrolment opening soon"
-      className={`${full ? "block w-full" : "inline-block"} cursor-not-allowed bg-ink px-8 py-4 text-center font-sans text-[12px] font-bold uppercase tracking-[0.12em] text-bone opacity-60`}
+      className={`${base} cursor-not-allowed opacity-60`}
     >
       {label}
     </button>
@@ -36,7 +57,10 @@ function CourseBody({ course }: { course: Course }) {
           {course.intro}
         </p>
         <div className="mt-[38px] flex flex-wrap items-center gap-5">
-          <EnrolButton label={`Enrol — ${course.price} →`} />
+          <EnrolButton
+            label={`Enrol — ${course.price} →`}
+            href={course.checkoutUrl}
+          />
           <span className="font-mono text-[11px] tracking-[0.06em] text-label">
             {course.meta}
           </span>
@@ -131,9 +155,15 @@ function CourseBody({ course }: { course: Course }) {
                 </span>
               </div>
 
-              <EnrolButton label="Enrol now →" full />
+              <EnrolButton
+                label="Enrol now →"
+                href={course.checkoutUrl}
+                full
+              />
               <p className="mt-3 text-center font-mono text-[9px] tracking-[0.06em] text-label-lighter">
-                Enrolment opening soon — secure checkout via easytools
+                {course.checkoutUrl
+                  ? "Secure checkout via easytools"
+                  : "Enrolment opening soon — secure checkout via easytools"}
               </p>
             </div>
           </div>
@@ -143,7 +173,8 @@ function CourseBody({ course }: { course: Course }) {
   );
 }
 
-export default function CourseView() {
+export default function CourseView({ courses }: { courses: Course[] }) {
+  if (courses.length === 0) return null;
   return (
     <Tabs
       defaultValue={courses[0].key}

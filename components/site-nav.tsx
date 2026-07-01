@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
-import { categories, pageNav, site } from "@/lib/site";
+import { pageNav } from "@/lib/site";
+import type { SiteSettings } from "@/sanity/lib/fetch-data";
 import { cn } from "@/lib/utils";
 
 /** Href for a catalogue category filter. "Shop all" clears the param. */
@@ -52,11 +53,11 @@ function NavItem({
 }
 
 /** Desktop left rail (>= 860px) + mobile top bar (< 860px). */
-export default function SiteNav() {
+export default function SiteNav({ settings }: { settings: SiteSettings }) {
   const pathname = usePathname();
   const activeFilter = useActiveFilter();
 
-  const catItems = categories.map((cat) => ({
+  const catItems = settings.categories.map((cat) => ({
     label: cat,
     href: categoryHref(cat),
     active: activeFilter === cat,
@@ -75,7 +76,7 @@ export default function SiteNav() {
           href="/"
           className="font-serif text-[19px] font-medium text-gold transition-opacity hover:opacity-65"
         >
-          {site.name}
+          {settings.name}
         </Link>
 
         <div className="mt-10">
@@ -97,7 +98,7 @@ export default function SiteNav() {
         </div>
 
         <div className="mt-auto font-mono text-[9.5px] uppercase leading-[1.7] tracking-[0.14em] text-label-lighter">
-          <div>{site.footer}</div>
+          <div>{settings.footer}</div>
           <div>© {new Date().getFullYear()}</div>
         </div>
       </aside>
@@ -105,7 +106,7 @@ export default function SiteNav() {
       {/* ── Mobile top bar ───────────────────────────────────────── */}
       <header className="fixed inset-x-0 top-0 z-40 flex flex-col gap-2 border-b border-[color:var(--hairline)] bg-[rgba(242,238,228,0.92)] px-5 py-3 backdrop-blur-[6px] nav:hidden">
         <Link href="/" className="font-sans text-[15px] font-bold text-gold">
-          {site.name}
+          {settings.name}
         </Link>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
           {catItems.map((item) => (
