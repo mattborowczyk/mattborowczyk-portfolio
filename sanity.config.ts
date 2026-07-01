@@ -2,7 +2,10 @@ import { defineConfig } from "sanity";
 import { structureTool } from "sanity/structure";
 import { visionTool } from "@sanity/vision";
 import { schemaTypes } from "@/sanity/schemas";
-import { structure } from "@/sanity/structure";
+import { structure, singletonTypes } from "@/sanity/structure";
+
+// Actions a singleton may keep — no create/duplicate/delete.
+const singletonActions = new Set(["publish", "discardChanges", "restore"]);
 
 export default defineConfig({
   name: "default",
@@ -21,5 +24,16 @@ export default defineConfig({
 
   schema: {
     types: schemaTypes,
+    // Hide singletons from the global "Create new document" menu.
+    templates: (templates) =>
+      templates.filter(({ schemaType }) => !singletonTypes.has(schemaType)),
+  },
+
+  document: {
+    // Restrict the action set for singleton documents.
+    actions: (input, { schemaType }) =>
+      singletonTypes.has(schemaType)
+        ? input.filter(({ action }) => action && singletonActions.has(action))
+        : input,
   },
 });

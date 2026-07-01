@@ -1,47 +1,64 @@
 import type { StructureResolver } from "sanity/structure";
 
 /**
- * Custom desk structure:
- * - Settings is a singleton (no list view, goes straight to the document)
- * - Everything else is grouped logically
+ * Singleton document types. Each is edited as a single fixed-id document
+ * (no list, no create/duplicate/delete — enforced here + in sanity.config.ts).
+ */
+export const singletonTypes = new Set([
+  "studio",
+  "contact",
+  "links",
+  "newsletter",
+  "settings",
+]);
+
+/** A singleton list item that opens its one fixed document directly. */
+function singleton(
+  S: Parameters<StructureResolver>[0],
+  id: string,
+  title: string,
+) {
+  return S.listItem()
+    .title(title)
+    .id(id)
+    .child(S.document().schemaType(id).documentId(id).title(title));
+}
+
+/**
+ * Desk structure:
+ * - Repeatable content (Products, Courses) as ordered document lists.
+ * - Pages & globals as singletons.
  */
 export const structure: StructureResolver = (S) =>
   S.list()
     .title("Content")
     .items([
-      // Singleton: Site Settings
       S.listItem()
-        .title("Site Settings")
-        .id("settings")
+        .title("Products")
+        .schemaType("product")
         .child(
-          S.document()
-            .schemaType("settings")
-            .documentId("siteSettings")
+          S.documentTypeList("product")
+            .title("Products")
+            .defaultOrdering([{ field: "order", direction: "asc" }]),
+        ),
+
+      S.listItem()
+        .title("Courses")
+        .schemaType("course")
+        .child(
+          S.documentTypeList("course")
+            .title("Courses")
+            .defaultOrdering([{ field: "order", direction: "asc" }]),
         ),
 
       S.divider(),
 
-      // Portfolio
-      S.listItem()
-        .title("Pieces")
-        .schemaType("piece")
-        .child(S.documentTypeList("piece").title("Pieces")),
-
-      S.listItem()
-        .title("Collections")
-        .schemaType("collection")
-        .child(S.documentTypeList("collection").title("Collections")),
-
-      S.listItem()
-        .title("Materials")
-        .schemaType("material")
-        .child(S.documentTypeList("material").title("Materials")),
+      singleton(S, "studio", "Studio Page"),
+      singleton(S, "contact", "Contact Page"),
+      singleton(S, "links", "Links Page"),
+      singleton(S, "newsletter", "Newsletter"),
 
       S.divider(),
 
-      // Pages
-      S.listItem()
-        .title("Pages")
-        .schemaType("page")
-        .child(S.documentTypeList("page").title("Pages")),
+      singleton(S, "settings", "Site Settings"),
     ]);

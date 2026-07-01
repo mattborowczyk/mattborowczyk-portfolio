@@ -31,9 +31,11 @@ export const pageNav = [
 
 /**
  * Build a prefilled commission mailto for a given piece (or a general one).
+ * `email` is passed in so callers use the CMS-backed brand email (with the
+ * seed `site.email` as the fallback source).
  */
-export function commissionMailto(subject?: string) {
-  const base = `mailto:${site.email}`;
+export function commissionMailto(email: string, subject?: string) {
+  const base = `mailto:${email}`;
   if (!subject) return base;
   return `${base}?subject=${encodeURIComponent(subject)}`;
 }

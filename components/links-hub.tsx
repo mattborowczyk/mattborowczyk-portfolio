@@ -3,7 +3,7 @@
 import Link from "next/link";
 
 import { openNewsletter } from "@/components/newsletter-card";
-import { linkItems } from "@/lib/content";
+import type { LinkItem } from "@/sanity/lib/fetch-data";
 
 const rowClass =
   "flex w-full items-center justify-between border border-[rgba(40,38,33,0.17)] px-5 py-4 text-left font-sans text-[13px] text-ink transition-colors hover:border-[rgba(40,38,33,0.3)] hover:bg-band";
@@ -20,7 +20,7 @@ function Arrow() {
 }
 
 /** Hidden bio-link hub (link-in-bio). Not in nav; direct URL only. */
-export default function LinksHub() {
+export default function LinksHub({ items }: { items: LinkItem[] }) {
   return (
     <div className="flex min-h-screen animate-mbfade flex-col items-center justify-center px-6 py-[60px]">
       <div className="flex w-[min(100%,400px)] flex-col items-center">
@@ -40,7 +40,7 @@ export default function LinksHub() {
         </div>
 
         <div className="flex w-full flex-col gap-[9px]">
-          {linkItems.map((item) => {
+          {items.map((item) => {
             const content = (
               <>
                 <span>{item.label}</span>

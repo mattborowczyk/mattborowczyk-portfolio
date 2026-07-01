@@ -1,153 +1,152 @@
 import { groq } from "next-sanity";
 
-// ─── Fragments ──────────────────────────────────────────────────────────────
+import type { Product } from "@/lib/products";
+import type { Course } from "@/lib/courses";
 
-const imageFragment = groq`{
-  asset,
-  hotspot,
-  crop,
-  alt
-}`;
+/**
+ * GROQ queries + result types for the Phase 3 content model. Each projection
+ * is shaped to match the local seed types (lib/*) so pages can fall back to the
+ * seed without any mapping. See sanity/lib/fetch-data.ts for the cached,
+ * fallback-aware getters that pages actually call.
+ */
 
-const pieceCardFragment = groq`{
-  _id,
+// ─── Products ────────────────────────────────────────────────────────────────
+
+const productFields = groq`
+  "ref": ref,
   name,
-  "slug": slug.current,
-  "image": images[0] ${imageFragment},
-  status,
-  collection->{ title, "slug": slug.current }
-}`;
-
-// ─── Pieces ─────────────────────────────────────────────────────────────────
-
-export const allPiecesQuery = groq`
-  *[_type == "piece"] | order(order asc, _createdAt desc) ${pieceCardFragment}
+  type,
+  category,
+  material,
+  price,
+  weight,
+  dimensions,
+  finish,
+  leadTime,
+  description
 `;
 
-export const featuredPiecesQuery = groq`
-  *[_type == "piece" && featured == true] | order(order asc) [0...6] ${pieceCardFragment}
-`;
-
-export const pieceBySlugQuery = groq`
-  *[_type == "piece" && slug.current == $slug][0] {
-    _id,
-    name,
-    "slug": slug.current,
-    images[] ${imageFragment},
-    description,
-    dimensions,
-    status,
-    materials[]->{ _id, name },
-    collection->{ title, "slug": slug.current },
-    shopifyProductId
+export const allProductsQuery = groq`
+  *[_type == "product" && defined(ref)] | order(order asc, _createdAt asc) {
+    ${productFields}
   }
 `;
 
-export const allPieceSlugsQuery = groq`
-  *[_type == "piece" && defined(slug.current)] { "slug": slug.current }
-`;
+export type ProductResult = Product;
 
-// ─── Collections ─────────────────────────────────────────────────────────────
+// ─── Courses ─────────────────────────────────────────────────────────────────
 
-export const allCollectionsQuery = groq`
-  *[_type == "collection"] | order(order asc) {
-    _id,
-    title,
-    "slug": slug.current,
-    description,
-    "coverImage": coverImage ${imageFragment}
+export const allCoursesQuery = groq`
+  *[_type == "course" && defined(key)] | order(order asc, _createdAt asc) {
+    key,
+    label,
+    headline,
+    intro,
+    price,
+    meta,
+    level,
+    length,
+    "checkoutUrl": checkoutUrl,
+    modules[]{ no, title, body, duration },
+    includes
   }
 `;
 
-export const collectionBySlugQuery = groq`
-  *[_type == "collection" && slug.current == $slug][0] {
-    _id,
-    title,
-    "slug": slug.current,
-    description,
-    "coverImage": coverImage ${imageFragment},
-    "pieces": *[_type == "piece" && references(^._id)] | order(order asc) ${pieceCardFragment}
+export type CourseResult = Course;
+
+// ─── Studio (singleton) ──────────────────────────────────────────────────────
+
+export const studioQuery = groq`
+  *[_type == "studio" && _id == "studio"][0] {
+    headline,
+    paragraphs,
+    specs[]{ label, value }
   }
 `;
 
-export const allCollectionSlugsQuery = groq`
-  *[_type == "collection" && defined(slug.current)] { "slug": slug.current }
-`;
+export type StudioResult = {
+  headline: string;
+  paragraphs: string[];
+  specs: { label: string; value: string }[];
+};
 
-// ─── Pages ───────────────────────────────────────────────────────────────────
+// ─── Contact (singleton) ─────────────────────────────────────────────────────
 
-export const aboutPageQuery = groq`
-  *[_type == "page" && slug.current == "about"][0] {
-    _id,
-    title,
-    body,
-    "coverImage": coverImage ${imageFragment},
-    seoDescription
+export const contactQuery = groq`
+  *[_type == "contact" && _id == "contact"][0] {
+    details[]{ label, value, href },
+    commissionHeadline,
+    commissionIntro,
+    commissionSteps[]{ no, title, body },
+    commissionPricing[]{ label, value }
   }
 `;
 
-// ─── Settings ────────────────────────────────────────────────────────────────
+export type ContactResult = {
+  details: { label: string; value: string; href?: string }[];
+  commissionHeadline: string;
+  commissionIntro: string;
+  commissionSteps: { no: string; title: string; body: string }[];
+  commissionPricing: { label: string; value: string }[];
+};
+
+// ─── Links (singleton) ───────────────────────────────────────────────────────
+
+export const linksQuery = groq`
+  *[_type == "links" && _id == "links"][0] {
+    items[]{ label, actionType, href }
+  }
+`;
+
+export type LinksResult = {
+  items: {
+    label: string;
+    actionType: "internal" | "external" | "newsletter";
+    href?: string;
+  }[];
+};
+
+// ─── Newsletter (singleton) ──────────────────────────────────────────────────
+
+export const newsletterQuery = groq`
+  *[_type == "newsletter" && _id == "newsletter"][0] {
+    headline,
+    microcopy
+  }
+`;
+
+export type NewsletterResult = {
+  headline: string;
+  microcopy: string;
+};
+
+// ─── Settings (singleton) ────────────────────────────────────────────────────
 
 export const settingsQuery = groq`
-  *[_type == "settings" && _id == "siteSettings"][0] {
-    siteTitle,
+  *[_type == "settings" && _id == "settings"][0] {
+    name,
     tagline,
-    newsletterTitle,
-    newsletterSubtitle,
-    social,
-    footerText
+    email,
+    instagram,
+    footer,
+    categories
   }
 `;
 
-// ─── TypeScript types (inferred shape, not generated) ────────────────────────
+export type SettingsResult = {
+  name: string;
+  tagline?: string;
+  email: string;
+  instagram?: string;
+  footer: string;
+  categories?: string[];
+};
+
+// ─── Image type ──────────────────────────────────────────────────────────────
 
 export type SanityImage = {
   asset: { _ref: string };
   hotspot?: object;
   crop?: object;
   alt?: string;
-};
-
-export type Piece = {
-  _id: string;
-  name: string;
-  slug: string;
-  images?: SanityImage[];
-  image?: SanityImage; // card fragment (first image only)
-  description?: string;
-  dimensions?: string;
-  status?: "portfolio" | "for_sale" | "sold" | "commission";
-  materials?: { _id: string; name: string }[];
-  collection?: { title: string; slug: string };
-  shopifyProductId?: string;
-};
-
-export type Collection = {
-  _id: string;
-  title: string;
-  slug: string;
-  description?: string;
-  coverImage?: SanityImage;
-  pieces?: Piece[];
-};
-
-export type Page = {
-  _id: string;
-  title?: string;
-  body?: unknown[];
-  coverImage?: SanityImage;
-  seoDescription?: string;
-};
-
-export type Settings = {
-  siteTitle?: string;
-  tagline?: string;
-  newsletterTitle?: string;
-  newsletterSubtitle?: string;
-  social?: {
-    instagram?: string;
-    tiktok?: string;
-    youtube?: string;
-  };
-  footerText?: string;
 };

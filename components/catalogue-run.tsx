@@ -21,9 +21,11 @@ import {
 export default function CatalogueRun({
   products,
   filter,
+  email,
 }: {
   products: Product[];
   filter: string;
+  email: string;
 }) {
   const [hovered, setHovered] = useState<string | null>(null);
   const [dwelled, setDwelled] = useState<string | null>(null);
@@ -113,7 +115,7 @@ export default function CatalogueRun({
                     {materialLabel(p.material)}
                   </div>
                   <a
-                    href={commissionMailto(`Commission – ${p.ref} ${p.name}`)}
+                    href={commissionMailto(email, `Commission – ${p.ref} ${p.name}`)}
                     className="border-b border-[rgba(40,38,33,0.25)] pb-px font-mono text-[9px] uppercase tracking-[0.12em] text-ink transition-colors hover:text-gold"
                   >
                     Commission →

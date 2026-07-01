@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 
 import LinksHub from "@/components/links-hub";
+import { getLinks } from "@/sanity/lib/fetch-data";
+
+export const revalidate = 60; // ISR
 
 export const metadata: Metadata = {
   title: "Links",
@@ -8,6 +11,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function LinksPage() {
-  return <LinksHub />;
+export default async function LinksPage() {
+  const items = await getLinks();
+  return <LinksHub items={items} />;
 }

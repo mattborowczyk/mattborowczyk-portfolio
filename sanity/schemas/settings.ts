@@ -1,52 +1,57 @@
 import { defineField, defineType } from "sanity";
 
+/**
+ * Site-wide settings — singleton. Mirrors `site` and `categories` in
+ * lib/site.ts. Singleton behaviour (fixed id, no create/delete/duplicate) is
+ * enforced in sanity/structure.ts + sanity.config.ts.
+ */
 export const settingsSchema = defineType({
   name: "settings",
   title: "Site Settings",
   type: "document",
-  // Singleton — only one settings document should exist. Enforced via
-  // structure.ts; proper singleton document actions land in Phase 3.
   fields: [
     defineField({
-      name: "siteTitle",
-      title: "Site Title",
+      name: "name",
+      title: "Brand name",
       type: "string",
-      initialValue: "Mateusz Borowczyk",
+      initialValue: "mattborowczyk",
+      validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: "tagline",
       title: "Tagline",
       type: "string",
+      initialValue: "Jewellery & Objects",
     }),
     defineField({
-      name: "newsletterTitle",
-      title: "Newsletter Section Title",
+      name: "email",
+      title: "Brand email",
       type: "string",
-      initialValue: "Stay in the loop",
+      description: "Used for commission mailto links and the footer.",
+      validation: (Rule) => Rule.required().email(),
     }),
     defineField({
-      name: "newsletterSubtitle",
-      title: "Newsletter Section Subtitle",
+      name: "instagram",
+      title: "Instagram URL",
+      type: "url",
+    }),
+    defineField({
+      name: "footer",
+      title: "Footer text",
       type: "string",
+      initialValue: "Made to order",
     }),
     defineField({
-      name: "social",
-      title: "Social Links",
-      type: "object",
-      fields: [
-        defineField({ name: "instagram", title: "Instagram URL", type: "url" }),
-        defineField({ name: "tiktok", title: "TikTok URL", type: "url" }),
-        defineField({ name: "youtube", title: "YouTube URL", type: "url" }),
-      ],
-    }),
-    defineField({
-      name: "footerText",
-      title: "Footer Text",
-      type: "string",
-      description: "e.g. 'Handcrafted in Warsaw'",
+      name: "categories",
+      title: "Catalogue categories",
+      type: "array",
+      of: [{ type: "string" }],
+      description:
+        'Filter taxonomy, in display order. "Shop all" is prepended automatically.',
     }),
   ],
   preview: {
-    select: { title: "siteTitle" },
+    select: { title: "name" },
+    prepare: ({ title }) => ({ title: "Site Settings", subtitle: title }),
   },
 });

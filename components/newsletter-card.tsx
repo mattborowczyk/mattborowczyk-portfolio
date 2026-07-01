@@ -17,7 +17,13 @@ type Status = "idle" | "loading" | "success" | "error";
  * previously dismissed), and can be re-opened on demand. No overlay/dimming.
  * Subscribe posts to the existing MailerLite endpoint.
  */
-export default function NewsletterCard() {
+export default function NewsletterCard({
+  headline,
+  microcopy,
+}: {
+  headline: string;
+  microcopy: string;
+}) {
   const [show, setShow] = useState(false);
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>("idle");
@@ -102,10 +108,10 @@ export default function NewsletterCard() {
         </button>
 
         <p className="mb-1.5 pr-[18px] font-serif text-[20px] leading-[1.25] tracking-[-0.01em]">
-          New work, when it happens.
+          {headline}
         </p>
         <p className="mb-4 font-mono text-[9px] leading-[1.65] tracking-[0.08em] text-label">
-          Studio releases &amp; process notes. Sent rarely.
+          {microcopy}
         </p>
 
         {status === "success" ? (

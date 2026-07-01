@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 
 import { CtaAnchor } from "@/components/ui/cta";
-import { commission, contactDetails } from "@/lib/content";
 import { commissionMailto } from "@/lib/site";
+import { getContact, getSettings } from "@/sanity/lib/fetch-data";
+
+export const revalidate = 60; // ISR
 
 export const metadata: Metadata = {
   title: "Contact",
@@ -10,7 +12,13 @@ export const metadata: Metadata = {
     "Get in touch to commission a hand-made piece in silver or gold, or to order a standalone 3D design.",
 };
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const [{ details, commission }, settings] = await Promise.all([
+    getContact(),
+    getSettings(),
+  ]);
+  const commissionHref = commissionMailto(settings.email, "Commission Enquiry");
+
   return (
     <div className="mx-auto max-w-[760px] px-[clamp(20px,5vw,72px)] pb-20 pt-[clamp(56px,10vw,140px)]">
       <p className="mb-[30px] font-mono text-[11px] uppercase tracking-[0.18em] text-label">
@@ -21,7 +29,7 @@ export default function ContactPage() {
       </h1>
 
       <dl className="mt-11 grid grid-cols-[auto_1fr] gap-x-8 gap-y-3.5 font-mono text-[13px] tracking-[0.03em] text-body">
-        {contactDetails.map((d) => (
+        {details.map((d) => (
           <div key={d.label} className="contents">
             <dt className="text-label-light">{d.label}</dt>
             <dd>
@@ -82,7 +90,7 @@ export default function ContactPage() {
           ))}
         </dl>
 
-        <CtaAnchor href={commissionMailto("Commission Enquiry")}>
+        <CtaAnchor href={commissionHref}>
           Start a commission →
         </CtaAnchor>
       </section>

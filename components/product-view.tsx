@@ -4,20 +4,25 @@ import { useState } from "react";
 import Link from "next/link";
 
 import { commissionMailto } from "@/lib/site";
-import {
-  type Product,
-  materialLabel,
-  productIndex,
-  productViews,
-} from "@/lib/products";
+import { type Product, materialLabel, productViews } from "@/lib/products";
 import { cn } from "@/lib/utils";
 
 /**
  * Full-bleed editorial product page. The three bottom-right markers switch
- * the placeholder "view" tone — a stand-in for a real image gallery.
+ * the placeholder "view" tone — a stand-in for a real image gallery. `index`
+ * is the piece's position in the ordered run, used to pick placeholder tones
+ * so they stay consistent with the catalogue.
  */
-export default function ProductView({ product }: { product: Product }) {
-  const views = productViews(productIndex(product.ref));
+export default function ProductView({
+  product,
+  index,
+  email,
+}: {
+  product: Product;
+  index: number;
+  email: string;
+}) {
+  const views = productViews(index);
   const [active, setActive] = useState(0);
 
   const specLine = [
@@ -95,7 +100,7 @@ export default function ProductView({ product }: { product: Product }) {
             {product.price}
           </span>
           <a
-            href={commissionMailto(`Commission – ${product.ref} ${product.name}`)}
+            href={commissionMailto(email, `Commission – ${product.ref} ${product.name}`)}
             className="border-b border-[rgba(40,38,33,0.3)] pb-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink transition-colors hover:text-gold"
           >
             Commission this piece →
