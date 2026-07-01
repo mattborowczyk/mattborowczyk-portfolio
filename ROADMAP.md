@@ -84,13 +84,14 @@ These can't be done in code alone. See "Action items for Matt" at the bottom.
 
 **Content & assets**
 - 🔴 **3D render stills** for each product (primary + extra views) — unblocks #6,
-      #17, #19, #30. Until these arrive the site shows sage placeholders.
+      #17, #30. Until these arrive the site shows sage placeholders. *(#43)*
 - 🔴 **A logo/mark** (even a simple wordmark glyph) for favicon / app icons (#19)
-      and a **default social share image** (#17).
+      and a **default social share image** (#17) — both optional; generated
+      defaults ship without them. *(#45)*
 - 🔴 **Live Easytools checkout URLs** for the two courses (#26). Until then the
       Enrol buttons render disabled ("opening soon").
 - 🔴 Final **copy review** on Studio / Contact / course modules (currently the
-      handoff placeholder copy, editable in the CMS).
+      handoff placeholder copy, editable in the CMS). *(#44)*
 
 **Product decisions** (open design issues)
 - 🔴 **Video & 3D hosting** — Mux vs Cloudflare Stream vs `<model-viewer>` *(#33)*
