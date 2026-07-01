@@ -42,9 +42,4 @@
       transparent 1px 14px
     );
   }
-
-  /* Editorial prose block for Sanity portable text. */
-  .prose-jewelry {
-    @apply prose prose-stone max-w-none;
-  }
 }

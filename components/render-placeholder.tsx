@@ -8,12 +8,12 @@ import { cn } from "@/lib/utils";
 export default function RenderPlaceholder({
   tone,
   caption = "3D RENDER",
-  ref: refCode,
+  code,
   className,
 }: {
   tone: string;
   caption?: string;
-  ref?: string;
+  code?: string;
   className?: string;
 }) {
   return (
@@ -28,9 +28,9 @@ export default function RenderPlaceholder({
       <span className="font-mono text-[9px] uppercase tracking-[0.24em] text-label">
         {caption}
       </span>
-      {refCode && (
+      {code && (
         <span className="mt-1 font-mono text-[9px] uppercase tracking-[0.24em] text-label-light">
-          {refCode}
+          {code}
         </span>
       )}
     </div>

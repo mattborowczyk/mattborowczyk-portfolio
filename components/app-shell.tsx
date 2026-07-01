@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 
 import SiteNav from "@/components/site-nav";
-import { cn } from "@/lib/utils";
 
 /**
  * Wraps every portfolio page. On the product route the rail is hidden and
@@ -24,11 +23,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <Suspense fallback={<div className="fixed left-0 top-0 h-screen w-[206px] bg-bone" />}>
         <SiteNav />
       </Suspense>
-      <main
-        className={cn(
-          "min-h-screen pt-[116px] nav:pt-0 nav:pl-[206px]",
-        )}
-      >
+      <main className="min-h-screen pt-[116px] nav:pt-0 nav:pl-[206px]">
         {children}
       </main>
     </>

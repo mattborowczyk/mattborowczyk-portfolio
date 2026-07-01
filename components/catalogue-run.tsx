@@ -80,7 +80,7 @@ export default function CatalogueRun({
                 >
                   <RenderPlaceholder
                     tone={toneFor(gi)}
-                    ref={p.ref}
+                    code={p.ref}
                     className="absolute inset-0"
                   />
                   <div
