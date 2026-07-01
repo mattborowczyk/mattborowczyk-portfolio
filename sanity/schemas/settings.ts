@@ -4,8 +4,8 @@ export const settingsSchema = defineType({
   name: "settings",
   title: "Site Settings",
   type: "document",
-  // Only one settings document should ever exist — enforced via structure.ts
-  __experimental_actions: ["update", "publish"],
+  // Singleton — only one settings document should exist. Enforced via
+  // structure.ts; proper singleton document actions land in Phase 3.
   fields: [
     defineField({
       name: "siteTitle",

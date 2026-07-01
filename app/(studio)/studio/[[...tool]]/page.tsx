@@ -1,16 +1,15 @@
 /**
- * Embedded Sanity Studio at /studio
+ * Embedded Sanity Studio at /studio (relocates to /admin in Phase 3).
  *
- * This file is intentionally minimal — the studio renders itself.
- * Access it at http://localhost:3000/studio during development.
+ * The config + NextStudio live in a client component (./Studio) so Sanity's
+ * client-only code is not evaluated on the server during the build.
  */
-import { NextStudio } from "next-sanity/studio";
-import config from "@/sanity.config";
+import { Studio } from "./Studio";
 
 export { metadata, viewport } from "next-sanity/studio";
 
-export const dynamic = "force-dynamic";
+export const dynamic = "force-static";
 
 export default function StudioPage() {
-  return <NextStudio config={config} />;
+  return <Studio />;
 }
