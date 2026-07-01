@@ -50,6 +50,7 @@ export const contactSchema = defineType({
       title: "Commission headline",
       type: "string",
       group: "commission",
+      validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: "commissionIntro",
@@ -57,6 +58,7 @@ export const contactSchema = defineType({
       type: "text",
       rows: 3,
       group: "commission",
+      validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: "commissionSteps",
@@ -67,7 +69,12 @@ export const contactSchema = defineType({
         {
           type: "object",
           fields: [
-            defineField({ name: "no", title: "Number", type: "string" }),
+            defineField({
+              name: "no",
+              title: "Number",
+              type: "string",
+              validation: (Rule) => Rule.required(),
+            }),
             defineField({
               name: "title",
               title: "Title",

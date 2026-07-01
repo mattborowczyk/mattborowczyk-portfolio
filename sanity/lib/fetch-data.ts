@@ -99,6 +99,9 @@ export const getStudio = cache(async (): Promise<StudioContent> =>
   withFallback<StudioContent>(
     () => sanityFetch<StudioResult>({ query: studioQuery, tags: ["studio"] }),
     seedStudio,
+    // A half-filled singleton (e.g. no paragraphs yet) would crash StudioPage's
+    // .map() calls — treat it as empty and use the seed instead.
+    (doc) => !doc.headline || !doc.paragraphs?.length || !doc.specs?.length,
   ),
 );
 
@@ -132,13 +135,20 @@ export const getContact = cache(async (): Promise<ContactContent> =>
         tags: ["contact"],
       });
       if (!doc) return null;
+      // Coalesce per field: a partially-filled singleton keeps whatever the
+      // editor has entered and falls back to the seed for anything still blank,
+      // so no section renders empty (and no undefined React keys leak through).
       return {
-        details: doc.details ?? [],
+        details: doc.details?.length ? doc.details : seedContact.details,
         commission: {
-          headline: doc.commissionHeadline,
-          intro: doc.commissionIntro,
-          steps: doc.commissionSteps ?? [],
-          pricing: doc.commissionPricing ?? [],
+          headline: doc.commissionHeadline ?? seedContact.commission.headline,
+          intro: doc.commissionIntro ?? seedContact.commission.intro,
+          steps: doc.commissionSteps?.length
+            ? doc.commissionSteps
+            : seedContact.commission.steps,
+          pricing: doc.commissionPricing?.length
+            ? doc.commissionPricing
+            : seedContact.commission.pricing,
         },
       };
     },

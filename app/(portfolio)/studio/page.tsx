@@ -2,15 +2,18 @@ import type { Metadata } from "next";
 
 import RenderPlaceholder from "@/components/render-placeholder";
 import { CtaLink } from "@/components/ui/cta";
-import { studio as seedStudio } from "@/lib/content";
 import { getStudio } from "@/sanity/lib/fetch-data";
 
 export const revalidate = 60; // ISR
 
-export const metadata: Metadata = {
-  title: "Studio",
-  description: seedStudio.headline,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  // getStudio() is cache()-deduped with the page render below — no extra fetch.
+  const studio = await getStudio();
+  return {
+    title: "Studio",
+    description: studio.headline,
+  };
+}
 
 export default async function StudioPage() {
   const studio = await getStudio();

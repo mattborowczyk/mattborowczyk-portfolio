@@ -83,7 +83,12 @@ export const courseSchema = defineType({
         {
           type: "object",
           fields: [
-            defineField({ name: "no", title: "Number", type: "string" }),
+            defineField({
+              name: "no",
+              title: "Number",
+              type: "string",
+              validation: (Rule) => Rule.required(),
+            }),
             defineField({
               name: "title",
               title: "Title",
