@@ -4,11 +4,15 @@
 
 @layer base {
   :root {
-    /* Override with your brand palette once design is ready */
-    --color-bg: theme("colors.stone.50");
-    --color-text: theme("colors.stone.900");
-    --color-muted: theme("colors.stone.500");
-    --color-border: theme("colors.stone.200");
+    /* Brand tokens as CSS variables (mirror tailwind.config colours). */
+    --bone: #f2eee4;
+    --card: #ede9df;
+    --band: #eae6db;
+    --ink: #1c1916;
+    --gold: #b08d4f;
+
+    /* Hairline colour used for the design's 1px rules. */
+    --hairline: rgba(40, 38, 33, 0.12);
   }
 
   html {
@@ -16,12 +20,30 @@
   }
 
   body {
-    @apply bg-stone-50 text-stone-900 antialiased;
+    @apply bg-bone text-body font-sans antialiased;
   }
 }
 
 @layer components {
-  /* Reusable prose block for Sanity portable text */
+  /* Diagonal-stripe placeholder pattern for stand-in renders. */
+  .render-stripe {
+    background-image: repeating-linear-gradient(
+      135deg,
+      rgba(40, 40, 35, 0.04) 0 1px,
+      transparent 1px 14px
+    );
+  }
+
+  /* Hover ("view-02") overlay uses the mirrored 45deg stripe. */
+  .render-stripe-45 {
+    background-image: repeating-linear-gradient(
+      45deg,
+      rgba(40, 40, 35, 0.05) 0 1px,
+      transparent 1px 14px
+    );
+  }
+
+  /* Editorial prose block for Sanity portable text. */
   .prose-jewelry {
     @apply prose prose-stone max-w-none;
   }
