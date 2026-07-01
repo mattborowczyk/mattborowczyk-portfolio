@@ -8,6 +8,9 @@ export default defineConfig({
   name: "default",
   title: "Mateusz Borowczyk — Jewellery",
 
+  // Embedded Studio lives at /admin (the public Studio page owns /studio).
+  basePath: "/admin",
+
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID!,
   dataset: process.env.NEXT_PUBLIC_SANITY_DATASET!,
 

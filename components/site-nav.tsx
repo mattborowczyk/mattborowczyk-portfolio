@@ -96,9 +96,10 @@ export default function SiteNav() {
           </nav>
         </div>
 
-        <p className="mt-auto whitespace-pre-line font-mono text-[9.5px] uppercase tracking-[0.14em] text-label-lighter">
-          {site.footer.replace(" / ", "\n")}
-        </p>
+        <div className="mt-auto font-mono text-[9.5px] uppercase leading-[1.7] tracking-[0.14em] text-label-lighter">
+          <div>{site.footer}</div>
+          <div>© {new Date().getFullYear()}</div>
+        </div>
       </aside>
 
       {/* ── Mobile top bar ───────────────────────────────────────── */}

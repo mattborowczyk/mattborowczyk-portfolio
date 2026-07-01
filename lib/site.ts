@@ -10,7 +10,7 @@ export const site = {
   instagram: "https://instagram.com/mattborowczyk",
   based: "London",
   hours: "By appointment",
-  footer: "MADE TO ORDER / © 2026",
+  footer: "Made to order",
 } as const;
 
 /** Catalogue category filters (in display order). */
