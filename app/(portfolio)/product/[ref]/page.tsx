@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import ProductView from "@/components/product-view";
-import { getProduct, getProducts } from "@/sanity/lib/fetch-data";
+import { getProduct, getProducts, getSettings } from "@/sanity/lib/fetch-data";
 
 export const revalidate = 60; // ISR
 
@@ -32,8 +32,17 @@ export default async function ProductPage({
   params: Promise<{ ref: string }>;
 }) {
   const { ref } = await params;
-  const result = await getProduct(ref);
+  const [result, settings] = await Promise.all([
+    getProduct(ref),
+    getSettings(),
+  ]);
   if (!result) notFound();
 
-  return <ProductView product={result.product} index={result.index} />;
+  return (
+    <ProductView
+      product={result.product}
+      index={result.index}
+      email={settings.email}
+    />
+  );
 }

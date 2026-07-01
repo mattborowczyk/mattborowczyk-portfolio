@@ -16,9 +16,11 @@ import { cn } from "@/lib/utils";
 export default function ProductView({
   product,
   index,
+  email,
 }: {
   product: Product;
   index: number;
+  email: string;
 }) {
   const views = productViews(index);
   const [active, setActive] = useState(0);
@@ -98,7 +100,7 @@ export default function ProductView({
             {product.price}
           </span>
           <a
-            href={commissionMailto(`Commission – ${product.ref} ${product.name}`)}
+            href={commissionMailto(email, `Commission – ${product.ref} ${product.name}`)}
             className="border-b border-[rgba(40,38,33,0.3)] pb-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-ink transition-colors hover:text-gold"
           >
             Commission this piece →

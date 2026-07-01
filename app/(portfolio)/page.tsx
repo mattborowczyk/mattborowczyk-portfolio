@@ -16,5 +16,7 @@ export default async function CataloguePage({
   const filter =
     raw && settings.categories.includes(raw) ? raw : "Shop all";
 
-  return <CatalogueRun products={products} filter={filter} />;
+  return (
+    <CatalogueRun products={products} filter={filter} email={settings.email} />
+  );
 }

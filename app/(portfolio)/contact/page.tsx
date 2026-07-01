@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { CtaAnchor } from "@/components/ui/cta";
+import { commissionMailto } from "@/lib/site";
 import { getContact, getSettings } from "@/sanity/lib/fetch-data";
 
 export const revalidate = 60; // ISR
@@ -16,9 +17,7 @@ export default async function ContactPage() {
     getContact(),
     getSettings(),
   ]);
-  const commissionHref = `mailto:${settings.email}?subject=${encodeURIComponent(
-    "Commission Enquiry",
-  )}`;
+  const commissionHref = commissionMailto(settings.email, "Commission Enquiry");
 
   return (
     <div className="mx-auto max-w-[760px] px-[clamp(20px,5vw,72px)] pb-20 pt-[clamp(56px,10vw,140px)]">
