@@ -1,15 +1,44 @@
 import { defineField, defineType } from "sanity";
 
+/** Predefined social channels — paste a profile URL to show its icon on /links. */
+const SOCIAL_CHANNELS = [
+  { name: "instagram", title: "Instagram" },
+  { name: "tiktok", title: "TikTok" },
+  { name: "facebook", title: "Facebook" },
+  { name: "youtube", title: "YouTube" },
+  { name: "threads", title: "Threads" },
+  { name: "pinterest", title: "Pinterest" },
+  { name: "x", title: "X (Twitter)" },
+] as const;
+
 /**
- * Hidden bio-link hub (/links) — singleton. Mirrors `linkItems` in
- * lib/content.ts. Each item renders as an internal route, an external link, or
- * the newsletter opener depending on `actionType`.
+ * Hidden bio-link hub (/links) — singleton. Mirrors `linkItems` +
+ * `socialLinks` in lib/content.ts. Socials render as a compact icon row;
+ * each list item renders as an internal route, an external link, or the
+ * newsletter opener depending on `actionType`.
  */
 export const linksSchema = defineType({
   name: "links",
   title: "Links Page",
   type: "document",
   fields: [
+    defineField({
+      name: "socials",
+      title: "Social channels",
+      description:
+        "Paste the full profile URL for each channel you use. Empty channels are hidden.",
+      type: "object",
+      options: { collapsible: true, collapsed: false },
+      fields: SOCIAL_CHANNELS.map(({ name, title }) =>
+        defineField({
+          name,
+          title,
+          type: "url",
+          validation: (Rule) =>
+            Rule.uri({ scheme: ["https", "http"] }),
+        }),
+      ),
+    }),
     defineField({
       name: "items",
       title: "Links",

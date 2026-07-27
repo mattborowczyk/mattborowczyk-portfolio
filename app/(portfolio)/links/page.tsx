@@ -12,6 +12,6 @@ export const metadata: Metadata = {
 };
 
 export default async function LinksPage() {
-  const items = await getLinks();
-  return <LinksHub items={items} />;
+  const links = await getLinks();
+  return <LinksHub links={links} />;
 }

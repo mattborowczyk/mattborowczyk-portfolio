@@ -30,7 +30,7 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "cursor-pointer font-sans text-[11px] font-bold uppercase tracking-[0.1em] transition-colors focus-visible:outline-none disabled:pointer-events-none",
+      "cursor-pointer font-sans text-sm font-bold uppercase tracking-wide-md transition-colors focus-visible:outline-none disabled:pointer-events-none",
       className,
     )}
     {...props}

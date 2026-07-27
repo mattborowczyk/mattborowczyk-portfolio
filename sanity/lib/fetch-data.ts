@@ -25,7 +25,9 @@ import {
   commission as seedCommission,
   contactDetails as seedContactDetails,
   linkItems as seedLinkItems,
+  socialLinks as seedSocialLinks,
   type LinkAction,
+  type SocialLinks,
 } from "@/lib/content";
 import { site as seedSite, categories as seedCategories } from "@/lib/site";
 
@@ -159,27 +161,45 @@ export const getContact = cache(async (): Promise<ContactContent> =>
 // ─── Links (singleton) ───────────────────────────────────────────────────────
 
 export type LinkItem = { label: string; action: LinkAction };
+export type LinksContent = { items: LinkItem[]; socials: SocialLinks };
 
-export const getLinks = cache(async (): Promise<LinkItem[]> =>
-  withFallback<LinkItem[]>(
+const seedLinks: LinksContent = {
+  items: seedLinkItems,
+  socials: seedSocialLinks,
+};
+
+export const getLinks = cache(async (): Promise<LinksContent> =>
+  withFallback<LinksContent>(
     async () => {
       const doc = await sanityFetch<LinksResult>({
         query: linksQuery,
         tags: ["links"],
       });
-      if (!doc?.items?.length) return null;
-      return doc.items.map((item): LinkItem => {
-        if (item.actionType === "newsletter") {
-          return { label: item.label, action: { type: "newsletter" } };
-        }
-        return {
-          label: item.label,
-          action: { type: item.actionType, href: item.href ?? "#" },
-        };
-      });
+      if (!doc) return null;
+      const hasItems = Boolean(doc.items?.length);
+      const hasSocials = Boolean(
+        doc.socials && Object.values(doc.socials).some(Boolean),
+      );
+      if (!hasItems && !hasSocials) return null;
+      // Each section falls back to its seed independently, so publishing only
+      // socials (or only list items) doesn't blank out the other half.
+      const items = !hasItems
+        ? seedLinkItems
+        : doc.items!.map((item): LinkItem => {
+            if (item.actionType === "newsletter") {
+              return { label: item.label, action: { type: "newsletter" } };
+            }
+            return {
+              label: item.label,
+              action: { type: item.actionType, href: item.href ?? "#" },
+            };
+          });
+      return {
+        items,
+        socials: hasSocials ? doc.socials! : seedSocialLinks,
+      };
     },
-    seedLinkItems,
-    (list) => list.length === 0,
+    seedLinks,
   ),
 );
 

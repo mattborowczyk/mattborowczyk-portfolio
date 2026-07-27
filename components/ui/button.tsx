@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
  * square corners, hairline / near-black variants, gold hover.
  */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-sans font-bold transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ink disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap font-sans text-md font-bold tracking-wide-md transition-colors duration-fast focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ink disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
@@ -17,14 +17,14 @@ const buttonVariants = cva(
         solid: "bg-ink text-bone hover:bg-gold",
         // Hairline outline → subtle fill on hover.
         outline:
-          "border border-[color:var(--hairline)] bg-transparent text-ink hover:bg-card",
+          "border border-hairline bg-transparent text-ink hover:bg-card",
         // Bare text link, mono, gold on hover (used for inline "→" links).
         link: "font-mono underline underline-offset-2 hover:text-gold p-0 h-auto",
         ghost: "hover:bg-card text-ink",
       },
       size: {
         default: "h-11 px-6",
-        sm: "h-9 px-4 text-xs",
+        sm: "h-9 px-4 text-xs tracking-wide-lg",
         lg: "h-12 px-8",
         full: "h-12 w-full px-8",
       },

@@ -41,11 +41,11 @@ export default function AppShell({
   return (
     <>
       <Suspense
-        fallback={<div className="fixed left-0 top-0 h-screen w-[206px] bg-bone" />}
+        fallback={<div className="fixed left-0 top-0 h-screen w-rail bg-bone" />}
       >
         <SiteNav settings={settings} />
       </Suspense>
-      <div className="min-h-screen pt-[116px] nav:pt-0 nav:pl-[206px]">
+      <div className="min-h-screen pt-topbar nav:pt-0 nav:pl-rail">
         <main>{children}</main>
         <SiteFooter settings={settings} />
       </div>

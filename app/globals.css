@@ -2,17 +2,115 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════════════
+   DESIGN SYSTEM — single source of truth
+   ───────────────────────────────────────────────────────────────────────
+   Every value the design uses lives here as a custom property; the Tailwind
+   config maps utilities onto these vars (see tailwind.config.ts). Change a
+   number here and it propagates uniformly across the whole site.
+
+   Everything is expressed in `rem`/`em`/`ch`/`%` so the design scales with
+   the user's root font size. `px` appears only for true hairlines (1px
+   borders), where scaling is not wanted.
+   ═══════════════════════════════════════════════════════════════════════ */
+
 @layer base {
   :root {
-    /* Brand tokens as CSS variables (mirror tailwind.config colours). */
-    --bone: #f2eee4;
-    --card: #ede9df;
-    --band: #eae6db;
-    --ink: #1c1916;
-    --gold: #b08d4f;
+    /* ── Colour ────────────────────────────────────────────────────────
+       Brand palette (locked). Mirrored in tailwind.config.ts `colors`. */
+    --bone: #f2eee4; /* page background */
+    --bone-veil: rgba(242, 238, 228, 0.92); /* bone behind a backdrop-blur */
+    --card: #ede9df; /* card / raised surface */
+    --band: #eae6db; /* muted band / spec block */
+    --ink: #1c1916; /* near-black — text, buttons */
+    --gold: #b08d4f; /* champagne gold accent */
 
-    /* Hairline colour used for the design's 1px rules. */
+    /* Translucent ink for marks drawn straight onto a render/placeholder
+       tone, where a solid grey would read as a different colour. */
+    --ink-faint: rgba(40, 40, 35, 0.45);
+    --ink-fainter: rgba(40, 40, 35, 0.4);
+    --ink-ghost: rgba(40, 40, 35, 0.3);
+
+    /* Hairline rules, three weights. */
     --hairline: rgba(40, 38, 33, 0.12);
+    --hairline-md: rgba(40, 38, 33, 0.18);
+    --hairline-strong: rgba(40, 38, 33, 0.3);
+
+    /* ── Type scale — UI / body ────────────────────────────────────────
+       xs…2xl. Comments show the px equivalent at a 16px root. */
+    --fs-3xs: 0.4375rem; /*  7px — swatch codes */
+    --fs-2xs: 0.5625rem; /*  9px — micro meta */
+    --fs-xs: 0.625rem; /* 10px — footer, eyebrows, markers */
+    --fs-sm: 0.6875rem; /* 11px — mono labels, captions */
+    --fs-md: 0.75rem; /* 12px — spec data, CTA text */
+    --fs-base: 0.8125rem; /* 13px — default UI text, nav */
+    --fs-lg: 0.9375rem; /* 15px — list copy, module titles */
+    --fs-xl: 1rem; /* 16px — body prose */
+    --fs-2xl: 1.0625rem; /* 17px — lead paragraph */
+
+    /* ── Type scale — display (serif, fixed) ───────────────────────────
+       Numerals, wordmarks and prices that must not reflow. */
+    --fs-display-xs: 1.1875rem; /* 19px — rail wordmark */
+    --fs-display-sm: 1.25rem; /* 20px — newsletter headline */
+    --fs-display-md: 1.6875rem; /* 27px — links-hub name */
+    --fs-display-lg: 2rem; /* 32px — module numerals */
+    --fs-display-xl: 2.25rem; /* 36px — step numerals */
+    --fs-display-2xl: 2.75rem; /* 44px — course price */
+
+    /* ── Type scale — headings (fluid) ─────────────────────────────────
+       Viewport-responsive clamps; min/max both in rem so user font-size
+       preferences still apply. `xs` doubles as the large price figure. */
+    --fs-heading-xs: clamp(2.5rem, 5vw, 3.375rem); /* 40 → 54 */
+    --fs-heading-sm: clamp(1.75rem, 4vw, 2.875rem); /* 28 → 46 */
+    --fs-heading-md: clamp(2.125rem, 5vw, 3.75rem); /* 34 → 60 */
+    --fs-heading-lg: clamp(2.375rem, 6vw, 4.75rem); /* 38 → 76 */
+    --fs-heading-xl: clamp(2.5rem, 6.5vw, 5.25rem); /* 40 → 84 */
+    --fs-heading-2xl: clamp(3.125rem, 7vw, 5.25rem); /* 50 → 84 */
+
+    /* ── Spacing scale ─────────────────────────────────────────────────
+       Used for gap / padding / margin. 3xs…3xl. */
+    --space-3xs: 0.25rem; /*  4px */
+    --space-2xs: 0.375rem; /*  6px */
+    --space-xs: 0.5625rem; /*  9px */
+    --space-sm: 0.875rem; /* 14px */
+    --space-md: 1.375rem; /* 22px */
+    --space-lg: 2rem; /* 32px */
+    --space-xl: 3.25rem; /* 52px */
+    --space-2xl: 4.5rem; /* 72px */
+    --space-3xl: 5.625rem; /* 90px */
+
+    /* ── Layout rhythm (fluid) ─────────────────────────────────────────
+       Page gutters and vertical section breaks. */
+    --gutter: clamp(1.25rem, 5vw, 4.5rem); /* 20 → 72 — standard pages */
+    --gutter-tight: clamp(1.25rem, 4vw, 4rem); /* 20 → 64 — full-bleed pages */
+    --section: clamp(3.25rem, 8vw, 6rem); /* 52 → 96 */
+    --section-lg: clamp(3rem, 8vw, 6.875rem); /* 48 → 110 */
+    --section-xl: clamp(3.5rem, 10vw, 8.75rem); /* 56 → 140 */
+    --stack-sm: clamp(1rem, 3vw, 2.5rem); /* 16 → 40 — inline row gap */
+    --stack: clamp(1.75rem, 5vw, 4.5rem); /* 28 → 72 — column split gap */
+    --run: clamp(5rem, 11vw, 7.5rem); /* 80 → 120 — catalogue run gap */
+
+    /* ── Measure (content widths) ──────────────────────────────────────
+       Named xs…lg; `shell-*` in Tailwind. */
+    --shell-xs: 25rem; /* 400px — links card */
+    --shell-sm: 47.5rem; /* 760px — catalogue, contact */
+    --shell-md: 57.5rem; /* 920px — product */
+    --shell-lg: 61.25rem; /* 980px — course, studio */
+
+    /* ── Elevation ─────────────────────────────────────────────────────
+       One soft card shadow; the design has no deeper elevation. */
+    --shadow-card: 0 0.125rem 1.375rem rgba(28, 25, 22, 0.085);
+
+    /* ── Motion ────────────────────────────────────────────────────────
+       Named durations so hover/reveal timings stay in step. */
+    --duration-fast: 250ms;
+    --duration-base: 350ms;
+    --duration-slow: 500ms;
+
+    /* ── Chrome ────────────────────────────────────────────────────────
+       Fixed nav rail width; the content offset is derived from it. */
+    --rail-width: 12.875rem; /* 206px */
+    --topbar-height: 7.25rem; /* 116px — mobile bar + breathing room */
   }
 
   html {
@@ -20,7 +118,7 @@
   }
 
   body {
-    @apply bg-bone text-body font-sans antialiased;
+    @apply bg-bone font-sans text-base text-body antialiased;
   }
 }
 

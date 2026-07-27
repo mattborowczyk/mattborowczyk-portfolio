@@ -4,7 +4,7 @@ import type { SiteSettings } from "@/sanity/lib/fetch-data";
 export default function SiteFooter({ settings }: { settings: SiteSettings }) {
   const year = new Date().getFullYear();
   return (
-    <footer className="mt-[60px] flex flex-wrap justify-between gap-3.5 border-t border-[color:var(--hairline)] px-[clamp(20px,5vw,72px)] py-[34px] font-mono text-[10px] uppercase tracking-[0.12em] text-label-light">
+    <footer className="mt-2xl flex flex-wrap justify-between gap-sm border-t border-hairline px-gutter py-lg font-mono text-xs uppercase tracking-wide-md text-label-light">
       <span>{settings.email}</span>
       {settings.instagram && (
         <a

@@ -1,37 +1,87 @@
 /**
- * Thin wrapper around the MailerLite API v2.
- * Docs: https://developers.mailerlite.com/docs/subscribers
+ * Thin wrapper around the MailerLite API.
+ * Docs: https://developers.mailerlite.com/docs/subscribers.html
+ *
+ * POST /subscribers upserts: 201 for a new subscriber, 200 if one already
+ * existed (non-destructive — omitted fields/groups are left alone).
  */
 
-const MAILERLITE_API_KEY = process.env.MAILERLITE_API_KEY!;
-const MAILERLITE_GROUP_ID = process.env.MAILERLITE_GROUP_ID;
 const BASE_URL = "https://connect.mailerlite.com/api";
 
+/** Thrown when the subscribe call fails, carrying a message safe to show the user. */
+export class NewsletterError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly userMessage: string
+  ) {
+    super(message);
+    this.name = "NewsletterError";
+  }
+}
+
+export function isNewsletterConfigured(): boolean {
+  return !!process.env.MAILERLITE_API_KEY;
+}
+
 export async function subscribeToNewsletter(email: string): Promise<void> {
-  const endpoint = MAILERLITE_GROUP_ID
-    ? `${BASE_URL}/subscribers` // group assignment handled below
-    : `${BASE_URL}/subscribers`;
+  // Read at call time so the value tracks the runtime environment, not build time.
+  const apiKey = process.env.MAILERLITE_API_KEY;
+  const groupId = process.env.MAILERLITE_GROUP_ID;
+
+  if (!apiKey) {
+    throw new NewsletterError(
+      "MAILERLITE_API_KEY is not set — see .env.local.example",
+      500,
+      "The newsletter isn’t available right now."
+    );
+  }
 
   const body: Record<string, unknown> = { email };
 
-  if (MAILERLITE_GROUP_ID) {
-    body.groups = [MAILERLITE_GROUP_ID];
+  if (groupId) {
+    body.groups = [groupId];
   }
 
-  const res = await fetch(endpoint, {
+  // Double opt-in: "unconfirmed" is what asks MailerLite to send the
+  // confirmation email. Requires "Double opt-in for API and integrations" to be
+  // ON in Account settings → Subscribe settings — see the note in README.
+  body.status = "unconfirmed";
+
+  const res = await fetch(`${BASE_URL}/subscribers`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${MAILERLITE_API_KEY}`,
+      Authorization: `Bearer ${apiKey}`,
       Accept: "application/json",
     },
     body: JSON.stringify(body),
   });
 
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(
-      error?.message ?? `MailerLite error: ${res.status} ${res.statusText}`
+  if (res.ok) return;
+
+  const payload = await res.json().catch(() => ({}));
+
+  // 422 is a validation failure — the field message is worth showing.
+  if (res.status === 422) {
+    const fieldError = Object.values(
+      (payload?.errors ?? {}) as Record<string, string[]>
+    )
+      .flat()
+      .find(Boolean);
+    throw new NewsletterError(
+      `MailerLite validation error: ${JSON.stringify(payload?.errors ?? {})}`,
+      400,
+      fieldError ?? "Please check your details and try again."
     );
   }
+
+  // 401/403 means the key is missing scopes or wrong; 404 usually a bad group id.
+  throw new NewsletterError(
+    `MailerLite error ${res.status} ${res.statusText}: ${
+      payload?.message ?? "(no message)"
+    }`,
+    502,
+    "Something went wrong. Please try again."
+  );
 }

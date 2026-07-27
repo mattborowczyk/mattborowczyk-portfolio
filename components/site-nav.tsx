@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
+import Eyebrow from "@/components/ui/eyebrow";
 import { pageNav } from "@/lib/site";
 import type { SiteSettings } from "@/sanity/lib/fetch-data";
 import { cn } from "@/lib/utils";
@@ -19,30 +20,19 @@ function useActiveFilter() {
   return params.get("filter") ?? "Shop all";
 }
 
-function GroupLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="mb-3 font-mono text-[9.5px] uppercase tracking-[0.2em] text-label-lighter">
-      {children}
-    </p>
-  );
-}
+type NavEntry = { href: string; label: string; active: boolean };
 
 function NavItem({
   href,
   label,
   active,
   className,
-}: {
-  href: string;
-  label: string;
-  active: boolean;
-  className?: string;
-}) {
+}: NavEntry & { className?: string }) {
   return (
     <Link
       href={href}
       className={cn(
-        "font-sans text-[13px] font-bold text-ink transition-opacity [transition-duration:250ms] hover:opacity-100",
+        "font-sans text-base font-bold text-ink transition-opacity duration-fast hover:opacity-100",
         active ? "opacity-100" : "opacity-40",
         className,
       )}
@@ -52,7 +42,23 @@ function NavItem({
   );
 }
 
-/** Desktop left rail (>= 860px) + mobile top bar (< 860px). */
+/** A labelled block of rail links (CATALOGUE / STUDIO). */
+function NavGroup({ label, items }: { label: string; items: NavEntry[] }) {
+  return (
+    <div className="flex flex-col gap-sm">
+      <Eyebrow size="2xs" className="text-label-lighter">
+        {label}
+      </Eyebrow>
+      <nav className="flex flex-col gap-xs">
+        {items.map((item) => (
+          <NavItem key={item.href + item.label} {...item} />
+        ))}
+      </nav>
+    </div>
+  );
+}
+
+/** Desktop left rail (>= nav breakpoint) + mobile top bar below it. */
 export default function SiteNav({ settings }: { settings: SiteSettings }) {
   const pathname = usePathname();
   const activeFilter = useActiveFilter();
@@ -71,50 +77,35 @@ export default function SiteNav({ settings }: { settings: SiteSettings }) {
   return (
     <>
       {/* ── Desktop rail ─────────────────────────────────────────── */}
-      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-[206px] flex-col bg-bone px-[26px] py-[28px] nav:flex">
+      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-rail flex-col gap-lg bg-bone px-6 py-7 nav:flex">
         <Link
           href="/"
-          className="font-serif text-[19px] font-medium text-gold transition-opacity hover:opacity-65"
+          className="font-serif text-display-xs font-medium text-gold transition-opacity hover:opacity-65"
         >
           {settings.name}
         </Link>
 
-        <div className="mt-10">
-          <GroupLabel>CATALOGUE</GroupLabel>
-          <nav className="flex flex-col gap-[9px]">
-            {catItems.map((item) => (
-              <NavItem key={item.label} {...item} />
-            ))}
-          </nav>
-        </div>
+        <NavGroup label="Catalogue" items={catItems} />
+        <NavGroup label="Studio" items={pageItems} />
 
-        <div className="mt-8">
-          <GroupLabel>STUDIO</GroupLabel>
-          <nav className="flex flex-col gap-[9px]">
-            {pageItems.map((item) => (
-              <NavItem key={item.href} {...item} />
-            ))}
-          </nav>
-        </div>
-
-        <div className="mt-auto font-mono text-[9.5px] uppercase leading-[1.7] tracking-[0.14em] text-label-lighter">
+        <div className="mt-auto font-mono text-2xs uppercase leading-relaxed tracking-wide-lg text-label-lighter">
           <div>{settings.footer}</div>
           <div>© {new Date().getFullYear()}</div>
         </div>
       </aside>
 
       {/* ── Mobile top bar ───────────────────────────────────────── */}
-      <header className="fixed inset-x-0 top-0 z-40 flex flex-col gap-2 border-b border-[color:var(--hairline)] bg-[rgba(242,238,228,0.92)] px-5 py-3 backdrop-blur-[6px] nav:hidden">
-        <Link href="/" className="font-sans text-[15px] font-bold text-gold">
+      <header className="fixed inset-x-0 top-0 z-40 flex flex-col gap-2xs border-b border-hairline bg-bone-veil px-5 py-3 backdrop-blur-sm nav:hidden">
+        <Link href="/" className="font-sans text-lg font-bold text-gold">
           {settings.name}
         </Link>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
           {catItems.map((item) => (
-            <NavItem key={item.label} {...item} className="text-[12px]" />
+            <NavItem key={item.label} {...item} className="text-md" />
           ))}
           <span className="text-label-lighter">·</span>
           {pageItems.map((item) => (
-            <NavItem key={item.href} {...item} className="text-[12px]" />
+            <NavItem key={item.href} {...item} className="text-md" />
           ))}
         </div>
       </header>

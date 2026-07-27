@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { CtaButton } from "@/components/ui/cta";
+
 const DISMISS_KEY = "mb_nl_v2_dismissed";
 const OPEN_EVENT = "mb:newsletter-open";
 
@@ -26,6 +28,9 @@ export default function NewsletterCard({
 }) {
   const [show, setShow] = useState(false);
   const [email, setEmail] = useState("");
+  // Honeypot — humans leave this empty. Not named "company": that's a real
+  // MailerLite field, and the collision would be confusing later.
+  const [companyUrl, setCompanyUrl] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
   const autoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -70,7 +75,7 @@ export default function NewsletterCard({
       const res = await fetch("/api/newsletter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, companyUrl }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
@@ -82,7 +87,8 @@ export default function NewsletterCard({
         } catch {
           /* ignore */
         }
-        setTimeout(() => setShow(false), 1600);
+        // Long enough to read a "check your inbox to confirm" instruction.
+        setTimeout(() => setShow(false), 4000);
       } else {
         setStatus("error");
         setMessage(data.error ?? "Something went wrong. Please try again.");
@@ -96,30 +102,42 @@ export default function NewsletterCard({
   if (!show) return null;
 
   return (
-    <div className="animate-mbnl fixed bottom-6 right-6 z-[200] w-[min(88vw,292px)] bg-card shadow-[0_2px_24px_rgba(28,25,22,0.09)]">
-      <div className="relative px-[22px] pb-[22px] pt-5">
+    <div className="animate-mbnl fixed bottom-6 right-6 z-[200] w-[min(88vw,18.25rem)] bg-card shadow-card">
+      <div className="relative flex flex-col gap-4 p-md">
         <button
           type="button"
           onClick={dismiss}
           aria-label="Dismiss newsletter"
-          className="absolute right-4 top-3.5 font-mono text-[11px] leading-none text-label-lighter transition-colors hover:text-ink"
+          className="absolute right-4 top-3.5 font-mono text-sm leading-none text-label-lighter transition-colors hover:text-ink"
         >
           ✕
         </button>
 
-        <p className="mb-1.5 pr-[18px] font-serif text-[20px] leading-[1.25] tracking-[-0.01em]">
-          {headline}
-        </p>
-        <p className="mb-4 font-mono text-[9px] leading-[1.65] tracking-[0.08em] text-label">
-          {microcopy}
-        </p>
+        <div className="flex flex-col gap-1.5">
+          <p className="pr-4 font-serif text-display-sm leading-snug tracking-tight">
+            {headline}
+          </p>
+          <p className="font-mono text-2xs leading-relaxed tracking-wide-sm text-label">
+            {microcopy}
+          </p>
+        </div>
 
         {status === "success" ? (
-          <p className="font-mono text-[10px] leading-[1.6] tracking-[0.04em] text-body">
+          <p className="font-mono text-xs leading-relaxed tracking-wide-xs text-body">
             {message}
           </p>
         ) : (
-          <form onSubmit={subscribe}>
+          <form onSubmit={subscribe} className="flex flex-col gap-3">
+            <input
+              type="text"
+              name="company_url"
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              value={companyUrl}
+              onChange={(e) => setCompanyUrl(e.target.value)}
+              className="absolute left-[-9999px] h-0 w-0 opacity-0"
+            />
             <input
               type="email"
               required
@@ -128,17 +146,13 @@ export default function NewsletterCard({
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
               disabled={status === "loading"}
-              className="mb-3 block w-full border-b border-[rgba(40,38,33,0.18)] bg-transparent py-2 font-mono text-[11px] text-ink outline-none placeholder:text-label-lighter disabled:opacity-50"
+              className="block w-full border-b border-hairline-md bg-transparent py-2 font-mono text-sm text-ink outline-none placeholder:text-label-lighter disabled:opacity-50"
             />
-            <button
-              type="submit"
-              disabled={status === "loading"}
-              className="w-full bg-ink py-3 font-sans text-[10px] font-bold uppercase tracking-[0.15em] text-bone transition-colors hover:bg-gold disabled:opacity-50"
-            >
+            <CtaButton type="submit" size="sm" block disabled={status === "loading"}>
               {status === "loading" ? "…" : "Subscribe"}
-            </button>
+            </CtaButton>
             {status === "error" && (
-              <p className="mt-2 font-mono text-[9px] tracking-[0.04em] text-[#9a3b2f]">
+              <p className="font-mono text-2xs tracking-wide-xs text-danger">
                 {message}
               </p>
             )}

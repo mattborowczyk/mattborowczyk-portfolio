@@ -19,20 +19,14 @@ export default function RenderPlaceholder({
   return (
     <div
       className={cn(
-        "render-stripe relative flex h-full w-full flex-col items-center justify-center",
+        "render-stripe relative flex h-full w-full flex-col items-center justify-center gap-3xs font-mono text-2xs uppercase tracking-wide-xl",
         className,
       )}
       style={{ backgroundColor: tone }}
       aria-hidden="true"
     >
-      <span className="font-mono text-[9px] uppercase tracking-[0.24em] text-label">
-        {caption}
-      </span>
-      {code && (
-        <span className="mt-1 font-mono text-[9px] uppercase tracking-[0.24em] text-label-light">
-          {code}
-        </span>
-      )}
+      <span className="text-label">{caption}</span>
+      {code && <span className="text-label-light">{code}</span>}
     </div>
   );
 }

@@ -3,16 +3,18 @@
 import Link from "next/link";
 
 import { openNewsletter } from "@/components/newsletter-card";
-import type { LinkItem } from "@/sanity/lib/fetch-data";
+import SocialIcons from "@/components/social-icons";
+import Eyebrow from "@/components/ui/eyebrow";
+import type { LinksContent } from "@/sanity/lib/fetch-data";
 
 const rowClass =
-  "flex w-full items-center justify-between border border-[rgba(40,38,33,0.17)] px-5 py-4 text-left font-sans text-[13px] text-ink transition-colors hover:border-[rgba(40,38,33,0.3)] hover:bg-band";
+  "flex w-full items-center justify-between border border-hairline-md px-5 py-4 text-left font-sans text-base text-ink transition-colors hover:border-hairline-strong hover:bg-band";
 
 function Arrow() {
   return (
     <span
       aria-hidden="true"
-      className="font-mono text-[9px] tracking-[0.1em] text-label-lightest"
+      className="font-mono text-2xs tracking-wide-md text-label-lightest"
     >
       →
     </span>
@@ -20,26 +22,33 @@ function Arrow() {
 }
 
 /** Hidden bio-link hub (link-in-bio). Not in nav; direct URL only. */
-export default function LinksHub({ items }: { items: LinkItem[] }) {
+export default function LinksHub({ links }: { links: LinksContent }) {
+  const { items, socials } = links;
   return (
-    <div className="flex min-h-screen animate-mbfade flex-col items-center justify-center px-6 py-[60px]">
-      <div className="flex w-[min(100%,400px)] flex-col items-center">
-        {/* Avatar (intentionally circular — the one rounded shape in the design) */}
-        <div className="relative mb-5 flex h-[68px] w-[68px] items-center justify-center overflow-hidden rounded-full bg-sage-01">
-          <div className="render-stripe absolute inset-0" />
-          <span className="relative font-mono text-[7px] tracking-[0.12em] text-[rgba(40,40,35,0.4)]">
-            MB
-          </span>
+    <div className="flex min-h-screen animate-mbfade flex-col items-center justify-center px-6 py-2xl">
+      <div className="flex w-full max-w-shell-xs flex-col items-center gap-lg">
+        {/* Identity */}
+        <div className="flex flex-col items-center gap-md">
+          {/* Avatar (intentionally circular — the one rounded shape in the design) */}
+          <div className="relative flex h-[4.25rem] w-[4.25rem] items-center justify-center overflow-hidden rounded-full bg-sage-01">
+            <div className="render-stripe absolute inset-0" />
+            <span className="relative font-mono text-3xs tracking-wide-md text-ink-fainter">
+              MB
+            </span>
+          </div>
+
+          <div className="flex flex-col items-center gap-3xs">
+            <div className="font-serif text-display-md font-medium text-ink">
+              mattborowczyk
+            </div>
+            <Eyebrow size="2xs">Jewellery &amp; Objects</Eyebrow>
+          </div>
         </div>
 
-        <div className="mb-[5px] font-serif text-[27px] font-medium text-ink">
-          mattborowczyk
-        </div>
-        <div className="mb-12 font-mono text-[9px] uppercase tracking-[0.2em] text-label-light">
-          Jewellery &amp; Objects
-        </div>
+        {/* Social channels — compact icon row, keeps the list short */}
+        <SocialIcons socials={socials} />
 
-        <div className="flex w-full flex-col gap-[9px]">
+        <div className="flex w-full flex-col gap-xs">
           {items.map((item) => {
             const content = (
               <>
@@ -80,7 +89,7 @@ export default function LinksHub({ items }: { items: LinkItem[] }) {
           })}
         </div>
 
-        <div className="mt-[52px] font-mono text-[9px] uppercase tracking-[0.16em] text-label-lightest">
+        <div className="mt-md font-mono text-2xs uppercase tracking-wide-lg text-label-lightest">
           © {new Date().getFullYear()}
         </div>
       </div>

@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 
+import Container from "@/components/ui/container";
 import { CtaAnchor } from "@/components/ui/cta";
+import Eyebrow from "@/components/ui/eyebrow";
+import SpecList from "@/components/ui/spec-list";
 import { commissionMailto } from "@/lib/site";
 import { getContact, getSettings } from "@/sanity/lib/fetch-data";
 
@@ -20,80 +23,56 @@ export default async function ContactPage() {
   const commissionHref = commissionMailto(settings.email, "Commission Enquiry");
 
   return (
-    <div className="mx-auto max-w-[760px] px-[clamp(20px,5vw,72px)] pb-20 pt-[clamp(56px,10vw,140px)]">
-      <p className="mb-[30px] font-mono text-[11px] uppercase tracking-[0.18em] text-label">
-        Contact
-      </p>
-      <h1 className="max-w-[18ch] font-serif text-[clamp(34px,5vw,60px)] font-medium leading-[1.05] text-ink">
-        Tell me what you’d like made.
-      </h1>
-
-      <dl className="mt-11 grid grid-cols-[auto_1fr] gap-x-8 gap-y-3.5 font-mono text-[13px] tracking-[0.03em] text-body">
-        {details.map((d) => (
-          <div key={d.label} className="contents">
-            <dt className="text-label-light">{d.label}</dt>
-            <dd>
-              {d.href ? (
-                <a
-                  href={d.href}
-                  target={d.href.startsWith("http") ? "_blank" : undefined}
-                  rel={d.href.startsWith("http") ? "noreferrer" : undefined}
-                  className="border-b border-[rgba(40,38,33,0.3)] text-ink transition-colors hover:text-gold"
-                >
-                  {d.value}
-                </a>
-              ) : (
-                <span>{d.value}</span>
-              )}
-            </dd>
-          </div>
-        ))}
-      </dl>
+    <Container className="flex flex-col gap-2xl pb-2xl pt-section-xl">
+      {/* Intro */}
+      <div className="flex flex-col gap-lg">
+        <div className="flex flex-col gap-md">
+          <Eyebrow>Contact</Eyebrow>
+          <h1 className="max-w-[18ch] font-serif text-heading-md font-medium leading-display text-ink">
+            Tell me what you’d like made.
+          </h1>
+        </div>
+        <SpecList items={details} size="base" className="gap-y-sm" />
+      </div>
 
       {/* Commission */}
-      <section className="mt-[72px] border-t border-[color:var(--hairline)] pt-[52px]">
-        <p className="mb-[22px] font-mono text-[11px] uppercase tracking-[0.18em] text-label">
-          Commission
-        </p>
-        <h2 className="mb-[18px] max-w-[22ch] font-serif text-[clamp(28px,4vw,46px)] font-medium leading-[1.06] text-ink">
-          {commission.headline}
-        </h2>
-        <p className="mb-10 max-w-[52ch] text-[15px] leading-[1.8] text-body-soft">
-          {commission.intro}
-        </p>
+      <section className="flex flex-col gap-lg border-t border-hairline pt-xl">
+        <div className="flex flex-col gap-md">
+          <Eyebrow>Commission</Eyebrow>
+          <h2 className="max-w-[22ch] font-serif text-heading-sm font-medium leading-display text-ink">
+            {commission.headline}
+          </h2>
+          <p className="max-w-[52ch] text-lg leading-loose text-body-soft">
+            {commission.intro}
+          </p>
+        </div>
 
-        <div className="mb-11 flex flex-wrap gap-x-7 gap-y-5">
+        {/* Numbered steps */}
+        <div className="flex flex-wrap gap-x-lg gap-y-md">
           {commission.steps.map((s) => (
             <div
               key={s.no}
-              className="min-w-[130px] flex-[1_1_150px] border-t border-[rgba(40,38,33,0.15)] pt-3.5"
+              className="flex min-w-[8rem] flex-[1_1_9.5rem] flex-col gap-2xs border-t border-hairline-md pt-3.5"
             >
-              <div className="mb-2.5 font-serif text-[36px] leading-none text-gold opacity-50">
+              <div className="font-serif text-display-xl leading-none text-gold opacity-50">
                 {s.no}
               </div>
-              <div className="mb-[5px] font-sans text-[13px] font-bold text-ink">
+              <div className="font-sans text-base font-bold text-ink">
                 {s.title}
               </div>
-              <div className="text-[12.5px] leading-[1.6] text-body-muted">
+              <div className="text-md leading-relaxed text-body-muted">
                 {s.body}
               </div>
             </div>
           ))}
         </div>
 
-        <dl className="mb-8 grid grid-cols-[auto_1fr] gap-x-7 gap-y-[11px] bg-band p-[26px] font-mono text-[12.5px] tracking-[0.02em] text-body">
-          {commission.pricing.map((p) => (
-            <div key={p.label} className="contents">
-              <dt className="text-label-light">{p.label}</dt>
-              <dd>{p.value}</dd>
-            </div>
-          ))}
-        </dl>
+        <SpecList items={commission.pricing} className="bg-band p-md" />
 
-        <CtaAnchor href={commissionHref}>
+        <CtaAnchor href={commissionHref} className="self-start">
           Start a commission →
         </CtaAnchor>
       </section>
-    </div>
+    </Container>
   );
 }

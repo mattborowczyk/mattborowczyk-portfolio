@@ -4,6 +4,9 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 
 import RenderPlaceholder from "@/components/render-placeholder";
+import Container from "@/components/ui/container";
+import Eyebrow from "@/components/ui/eyebrow";
+import { UnderlineAnchor } from "@/components/ui/underline-link";
 import { commissionMailto } from "@/lib/site";
 import {
   type Product,
@@ -11,6 +14,18 @@ import {
   materialLabel,
   toneFor,
 } from "@/lib/products";
+
+/** Name + price row shared by the hover card and the mobile caption. */
+function PieceHeading({ name, price }: { name: string; price: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3xs">
+      <span className="font-sans text-base font-bold leading-none text-ink">
+        {name}
+      </span>
+      <span className="font-mono text-sm text-ink">{price}</span>
+    </div>
+  );
+}
 
 /**
  * The editorial catalogue "run": a centred vertical column of pieces that
@@ -49,28 +64,27 @@ export default function CatalogueRun({
   }
 
   return (
-    <div className="animate-mbfade">
-      <div className="mx-auto max-w-[760px] px-[clamp(20px,5vw,72px)] pt-[clamp(52px,9vw,110px)]">
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-label">
-          COLLECTION 01 — SILVER &amp; GOLD
-        </p>
-      </div>
+    <div className="flex animate-mbfade flex-col gap-lg pt-section-lg">
+      <Container>
+        <Eyebrow size="xs">Collection 01 — Silver &amp; Gold</Eyebrow>
+      </Container>
 
-      <div className="mx-auto flex max-w-[760px] flex-col gap-[clamp(80px,11vw,120px)] px-[clamp(20px,5vw,72px)] pb-[100px] pt-12">
+      <Container className="flex flex-col gap-run pb-3xl">
         {matched.map((p, i) => {
           const gi = products.indexOf(p);
-          const tx = i % 2 === 0 ? "-52px" : "52px";
+          // Alternate the run left/right of centre (desktop only).
+          const tx = i % 2 === 0 ? "-3.25rem" : "3.25rem";
           const isHover = hovered === p.ref;
           const isDwell = dwelled === p.ref;
           return (
             <div
               key={p.ref}
-              className="flex justify-center pb-[52px]"
+              className="flex justify-center pb-xl"
               onMouseEnter={() => enter(p.ref)}
               onMouseLeave={leave}
             >
               <div
-                className="relative w-[360px] max-w-[82%] transition-transform duration-500 nav:translate-x-[var(--tx)]"
+                className="relative w-[22.5rem] max-w-[82%] transition-transform duration-slow nav:translate-x-[var(--tx)]"
                 style={{ "--tx": tx } as React.CSSProperties}
               >
                 {/* Image (click → product) */}
@@ -86,7 +100,7 @@ export default function CatalogueRun({
                     className="absolute inset-0"
                   />
                   <div
-                    className="render-stripe-45 absolute inset-0 transition-opacity [transition-duration:400ms]"
+                    className="render-stripe-45 absolute inset-0 transition-opacity duration-base"
                     style={{
                       backgroundColor: altToneFor(gi),
                       opacity: isHover ? 1 : 0,
@@ -97,42 +111,28 @@ export default function CatalogueRun({
 
                 {/* Straddling info card (desktop, after 500ms dwell) */}
                 <div
-                  className="absolute bottom-[-46px] left-1/2 z-10 hidden w-[min(90%,236px)] -translate-x-1/2 bg-card px-[18px] pb-[16px] pt-[14px] shadow-[0_2px_20px_rgba(28,25,22,0.08)] transition-opacity [transition-duration:350ms] nav:block"
+                  className="absolute bottom-[-2.875rem] left-1/2 z-10 hidden w-[min(90%,14.75rem)] -translate-x-1/2 flex-col gap-2xs bg-card px-md pb-sm pt-3.5 shadow-card transition-opacity duration-base nav:flex"
                   style={{
                     opacity: isDwell ? 1 : 0,
                     pointerEvents: isDwell ? "auto" : "none",
                   }}
                 >
-                  <div className="mb-[5px] flex items-baseline justify-between">
-                    <span className="font-sans text-[13px] font-bold leading-none text-ink">
-                      {p.name}
-                    </span>
-                    <span className="font-mono text-[11px] text-ink">
-                      {p.price}
-                    </span>
-                  </div>
-                  <div className="mb-[11px] font-mono text-[9px] uppercase tracking-[0.1em] text-label">
+                  <PieceHeading name={p.name} price={p.price} />
+                  <div className="font-mono text-2xs uppercase tracking-wide-md text-label">
                     {materialLabel(p.material)}
                   </div>
-                  <a
+                  <UnderlineAnchor
                     href={commissionMailto(email, `Commission – ${p.ref} ${p.name}`)}
-                    className="border-b border-[rgba(40,38,33,0.25)] pb-px font-mono text-[9px] uppercase tracking-[0.12em] text-ink transition-colors hover:text-gold"
+                    className="mt-3xs self-start text-2xs uppercase tracking-wide-md"
                   >
                     Commission →
-                  </a>
+                  </UnderlineAnchor>
                 </div>
 
                 {/* Caption (mobile, always visible) */}
-                <div className="mt-3 nav:hidden">
-                  <div className="flex items-baseline justify-between">
-                    <span className="font-sans text-[13px] font-bold text-ink">
-                      {p.name}
-                    </span>
-                    <span className="font-mono text-[11px] text-ink">
-                      {p.price}
-                    </span>
-                  </div>
-                  <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.1em] text-label">
+                <div className="mt-3 flex flex-col gap-3xs nav:hidden">
+                  <PieceHeading name={p.name} price={p.price} />
+                  <div className="font-mono text-2xs uppercase tracking-wide-md text-label">
                     {materialLabel(p.material)} · {p.type}
                   </div>
                 </div>
@@ -143,23 +143,23 @@ export default function CatalogueRun({
 
         {/* Minimised swatches for non-matching pieces (click resets filter) */}
         {minimised.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-[10px]">
+          <div className="flex flex-wrap justify-center gap-2.5">
             {minimised.map((p) => (
               <Link
                 key={p.ref}
                 href="/"
                 aria-label={`Show all — ${p.ref}`}
-                className="flex h-[54px] w-[54px] items-center justify-center transition-transform [transition-duration:250ms] hover:scale-[1.08]"
+                className="flex h-[3.375rem] w-[3.375rem] items-center justify-center transition-transform duration-fast hover:scale-[1.08]"
                 style={{ backgroundColor: toneFor(products.indexOf(p)) }}
               >
-                <span className="font-mono text-[7px] text-[rgba(40,40,35,0.45)]">
+                <span className="font-mono text-3xs text-ink-faint">
                   {p.ref}
                 </span>
               </Link>
             ))}
           </div>
         )}
-      </div>
+      </Container>
     </div>
   );
 }

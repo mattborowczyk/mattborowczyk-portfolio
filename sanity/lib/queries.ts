@@ -94,7 +94,8 @@ export type ContactResult = {
 
 export const linksQuery = groq`
   *[_type == "links" && _id == "links"][0] {
-    items[]{ label, actionType, href }
+    items[]{ label, actionType, href },
+    socials{ instagram, tiktok, facebook, youtube, threads, pinterest, x }
   }
 `;
 
@@ -103,7 +104,16 @@ export type LinksResult = {
     label: string;
     actionType: "internal" | "external" | "newsletter";
     href?: string;
-  }[];
+  }[] | null;
+  socials: {
+    instagram?: string;
+    tiktok?: string;
+    facebook?: string;
+    youtube?: string;
+    threads?: string;
+    pinterest?: string;
+    x?: string;
+  } | null;
 };
 
 // ─── Newsletter (singleton) ──────────────────────────────────────────────────

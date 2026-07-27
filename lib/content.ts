@@ -57,6 +57,26 @@ export const linkItems: { label: string; action: LinkAction }[] = [
   { label: "Jewellery Design Course", action: { type: "internal", href: "/course" } },
   { label: "Digital Materials", action: { type: "external", href: "https://easytools.link/mattborowczyk-digital" } },
   { label: "Commission a Piece", action: { type: "internal", href: "/contact" } },
-  { label: "Instagram", action: { type: "external", href: "https://instagram.com/mattborowczyk" } },
   { label: "Newsletter", action: { type: "newsletter" } },
 ];
+
+/**
+ * Social channels rendered as an icon row on /links. The order here is the
+ * display order; channels without a URL simply don't render.
+ */
+export const socialChannels = [
+  "instagram",
+  "tiktok",
+  "facebook",
+  "youtube",
+  "threads",
+  "pinterest",
+  "x",
+] as const;
+
+export type SocialChannel = (typeof socialChannels)[number];
+export type SocialLinks = Partial<Record<SocialChannel, string>>;
+
+export const socialLinks: SocialLinks = {
+  instagram: "https://instagram.com/mattborowczyk",
+};
