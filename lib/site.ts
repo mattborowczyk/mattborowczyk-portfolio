@@ -13,14 +13,36 @@ export const site = {
   footer: "Made to order",
 } as const;
 
-/** Catalogue category filters (in display order). */
+/**
+ * Catalogue category filters (in display order). Only the fallback — the live
+ * list comes from Site Settings in Sanity, which is where to edit it.
+ */
 export const categories = [
   "Shop all",
   "Rings",
+  "Earrings",
   "Objects",
-  "Hardware",
-  "Tableware",
 ] as const;
+
+/**
+ * Portfolio category filters. A superset of the catalogue taxonomy — the
+ * archive includes work that was never a shop line (grillz, one-off commissions).
+ *
+ * Unlike `categories` this is not CMS-backed: the same list drives the filter
+ * rail *and* the `category` options on the Portfolio Piece schema, and a Sanity
+ * option list cannot read from another document. Add a category here and it
+ * appears in both places at once.
+ */
+export const portfolioCategories = [
+  "All work",
+  "Rings",
+  "Earrings",
+  "Grillz",
+  "Objects", // the catch-all: hardware, tableware and one-offs live here for now
+] as const;
+
+/** The reset entry — shows everything, carries no `filter` param. */
+export const PORTFOLIO_ALL = portfolioCategories[0];
 
 /**
  * STUDIO group — page nav.

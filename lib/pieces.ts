@@ -30,6 +30,7 @@ export interface Piece {
   ref: string; // short code shown on the placeholder, e.g. "PC-01"
   name: string;
   type: string; // e.g. "Signet Ring"
+  category: string; // one of `portfolioCategories` (lib/site.ts)
   material: string; // free text — commissions mix stones and metals
   year: string; // "" when no completion date is set
   status: PieceStatus;

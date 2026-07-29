@@ -119,6 +119,7 @@ export const getPieces = cache(async (): Promise<Piece[]> =>
         ref: doc.ref,
         name: doc.name,
         type: doc.type,
+        category: doc.category ?? "",
         material: doc.material ?? "",
         year: doc.completed?.slice(0, 4) ?? "",
         status: doc.status ?? "Archive",
@@ -299,6 +300,15 @@ export type SiteSettings = {
   instagram: string;
   footer: string;
   categories: readonly string[];
+  /** Faithful mirror of the CMS switch — the dev bypass lives at the gate. */
+  maintenance: { enabled: boolean; headline: string; message: string };
+};
+
+const seedMaintenance = {
+  enabled: false,
+  headline: "Back shortly.",
+  message:
+    "The studio site is being reworked. Commissions are still open — get in touch by email.",
 };
 
 const seedSettings: SiteSettings = {
@@ -308,6 +318,7 @@ const seedSettings: SiteSettings = {
   instagram: seedSite.instagram,
   footer: seedSite.footer,
   categories: seedCategories,
+  maintenance: seedMaintenance,
 };
 
 export const getSettings = cache(async (): Promise<SiteSettings> =>
@@ -328,6 +339,11 @@ export const getSettings = cache(async (): Promise<SiteSettings> =>
         categories: doc.categories?.length
           ? ["Shop all", ...doc.categories]
           : seedCategories,
+        maintenance: {
+          enabled: doc.maintenanceMode === true,
+          headline: doc.maintenanceHeadline ?? seedMaintenance.headline,
+          message: doc.maintenanceMessage ?? seedMaintenance.message,
+        },
       };
     },
     seedSettings,

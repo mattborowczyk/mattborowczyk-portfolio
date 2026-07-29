@@ -4,23 +4,55 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
 import Eyebrow from "@/components/ui/eyebrow";
-import { pageNav } from "@/lib/site";
+import { PORTFOLIO_ALL, pageNav, portfolioCategories } from "@/lib/site";
 import type { SiteSettings } from "@/sanity/lib/fetch-data";
 import { cn } from "@/lib/utils";
 
-/** Href for a catalogue category filter. "Shop all" clears the param. */
-function categoryHref(cat: string) {
-  return cat === "Shop all" ? "/" : `/?filter=${encodeURIComponent(cat)}`;
-}
-
-function useActiveFilter() {
-  const pathname = usePathname();
-  const params = useSearchParams();
-  if (pathname !== "/") return null;
-  return params.get("filter") ?? "Shop all";
-}
-
 type NavEntry = { href: string; label: string; active: boolean };
+
+/** A filter taxonomy plus the rail heading it sits under. */
+type FilterRail = { label: string; items: NavEntry[] };
+
+/** Build the filter entries for one route: first entry is the reset. */
+function filterEntries(
+  categories: readonly string[],
+  basePath: string,
+  activeParam: string | null,
+): NavEntry[] {
+  const reset = categories[0];
+  return categories.map((cat) => ({
+    label: cat,
+    href:
+      cat === reset
+        ? basePath
+        : `${basePath}?filter=${encodeURIComponent(cat)}`,
+    active: (activeParam ?? reset) === cat,
+  }));
+}
+
+/**
+ * Which filter taxonomy — if any — belongs on this route. The shop and the
+ * portfolio each own one; every other page shows none, so the rails stay quiet
+ * on reading pages.
+ */
+function useFilterRail(settings: SiteSettings): FilterRail | null {
+  const pathname = usePathname();
+  const activeParam = useSearchParams().get("filter");
+
+  if (pathname === "/") {
+    return {
+      label: "Catalogue",
+      items: filterEntries(settings.categories, "/", activeParam),
+    };
+  }
+  if (pathname === "/portfolio") {
+    return {
+      label: "Portfolio",
+      items: filterEntries(portfolioCategories, "/portfolio", activeParam),
+    };
+  }
+  return null;
+}
 
 function NavItem({
   href,
@@ -42,14 +74,23 @@ function NavItem({
   );
 }
 
-/** A labelled block of rail links (CATALOGUE / STUDIO). */
-function NavGroup({ label, items }: { label: string; items: NavEntry[] }) {
+/** A labelled block of rail links. `align` follows the rail it sits in. */
+function NavGroup({
+  label,
+  items,
+  align = "left",
+}: {
+  label: string;
+  items: NavEntry[];
+  align?: "left" | "right";
+}) {
+  const end = align === "right";
   return (
-    <div className="flex flex-col gap-sm">
+    <div className={cn("flex flex-col gap-sm", end && "items-end text-right")}>
       <Eyebrow size="2xs" className="text-label-lighter">
         {label}
       </Eyebrow>
-      <nav className="flex flex-col gap-xs">
+      <nav className={cn("flex flex-col gap-xs", end && "items-end")}>
         {items.map((item) => (
           <NavItem key={item.href + item.label} {...item} />
         ))}
@@ -58,16 +99,18 @@ function NavGroup({ label, items }: { label: string; items: NavEntry[] }) {
   );
 }
 
-/** Desktop left rail (>= nav breakpoint) + mobile top bar below it. */
+/**
+ * The site chrome, split across two fixed rails on desktop: the shop/portfolio
+ * filters on the left under the wordmark, the page nav on the right. Below the
+ * `nav` breakpoint both collapse into the single top bar.
+ *
+ * The left rail keeps the wordmark and the studio meta on every route — only
+ * the filter block comes and goes, so the frame never shifts under the content.
+ */
 export default function SiteNav({ settings }: { settings: SiteSettings }) {
   const pathname = usePathname();
-  const activeFilter = useActiveFilter();
+  const filters = useFilterRail(settings);
 
-  const catItems = settings.categories.map((cat) => ({
-    label: cat,
-    href: categoryHref(cat),
-    active: activeFilter === cat,
-  }));
   const pageItems = pageNav.map((p) => ({
     label: p.label,
     href: p.href,
@@ -76,7 +119,7 @@ export default function SiteNav({ settings }: { settings: SiteSettings }) {
 
   return (
     <>
-      {/* ── Desktop rail ─────────────────────────────────────────── */}
+      {/* ── Desktop: left rail (brand + filters) ─────────────────── */}
       <aside className="fixed left-0 top-0 z-40 hidden h-screen w-rail flex-col gap-lg bg-bone px-6 py-7 nav:flex">
         <Link
           href="/"
@@ -85,8 +128,7 @@ export default function SiteNav({ settings }: { settings: SiteSettings }) {
           {settings.name}
         </Link>
 
-        <NavGroup label="Catalogue" items={catItems} />
-        <NavGroup label="Studio" items={pageItems} />
+        {filters && <NavGroup label={filters.label} items={filters.items} />}
 
         <div className="mt-auto font-mono text-2xs uppercase leading-relaxed tracking-wide-lg text-label-lighter">
           <div>{settings.footer}</div>
@@ -94,16 +136,30 @@ export default function SiteNav({ settings }: { settings: SiteSettings }) {
         </div>
       </aside>
 
+      {/* ── Desktop: right rail (pages) ──────────────────────────── */}
+      <aside className="fixed right-0 top-0 z-40 hidden h-screen w-rail-right flex-col bg-bone px-6 py-7 nav:flex">
+        <NavGroup label="Studio" items={pageItems} align="right" />
+      </aside>
+
       {/* ── Mobile top bar ───────────────────────────────────────── */}
       <header className="fixed inset-x-0 top-0 z-40 flex flex-col gap-2xs border-b border-hairline bg-bone-veil px-5 py-3 backdrop-blur-sm nav:hidden">
         <Link href="/" className="font-sans text-lg font-bold text-gold">
           {settings.name}
         </Link>
+        {/* Two rows rather than one dot-separated run: with the portfolio's
+            longer taxonomy a single row wraps and orphans the separator. */}
+        {filters && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            {filters.items.map((item) => (
+              <NavItem
+                key={item.href + item.label}
+                {...item}
+                className="text-md"
+              />
+            ))}
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          {catItems.map((item) => (
-            <NavItem key={item.label} {...item} className="text-md" />
-          ))}
-          <span className="text-label-lighter">·</span>
           {pageItems.map((item) => (
             <NavItem key={item.href} {...item} className="text-md" />
           ))}

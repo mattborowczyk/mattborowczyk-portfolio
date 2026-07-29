@@ -95,6 +95,7 @@ const config: Config = {
         run: "var(--run)",
         // Chrome.
         rail: "var(--rail-width)",
+        "rail-right": "var(--rail-right-width)",
         topbar: "var(--topbar-height)",
       },
       maxWidth: {
@@ -105,6 +106,7 @@ const config: Config = {
       },
       width: {
         rail: "var(--rail-width)",
+        "rail-right": "var(--rail-right-width)",
       },
       colors: {
         // ── Brand palette (locked design tokens) ──────────────────

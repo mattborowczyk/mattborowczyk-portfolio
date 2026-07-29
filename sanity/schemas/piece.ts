@@ -1,6 +1,10 @@
 import { defineField, defineType } from "sanity";
 
 import { pieceStatuses } from "@/lib/pieces";
+import { PORTFOLIO_ALL, portfolioCategories } from "@/lib/site";
+
+/** "All work" is the rail's reset entry, not something a piece can be. */
+const filterCategories = portfolioCategories.filter((c) => c !== PORTFOLIO_ALL);
 
 /**
  * Portfolio piece — a record of work made, for the /portfolio run. Mirrors the
@@ -44,6 +48,15 @@ export const pieceSchema = defineType({
       title: "Type",
       type: "string",
       description: 'e.g. "Signet Ring", "Grillz", "Pendant"',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: "category",
+      title: "Category",
+      type: "string",
+      description: "Drives the portfolio filter rail.",
+      // Sourced from lib/site.ts so the rail and this list can never drift.
+      options: { list: [...filterCategories], layout: "radio" },
       validation: (Rule) => Rule.required(),
     }),
     defineField({

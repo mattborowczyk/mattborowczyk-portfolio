@@ -109,7 +109,8 @@
 
     /* ── Chrome ────────────────────────────────────────────────────────
        Fixed nav rail width; the content offset is derived from it. */
-    --rail-width: 12.875rem; /* 206px */
+    --rail-width: 12.875rem; /* 206px — left rail: brand + filters */
+    --rail-right-width: 9.5rem; /* 152px — right rail: page nav */
     --topbar-height: 7.25rem; /* 116px — mobile bar + breathing room */
   }
 

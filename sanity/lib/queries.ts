@@ -46,6 +46,7 @@ export const allPiecesQuery = groq`
     "ref": ref,
     name,
     type,
+    category,
     material,
     completed,
     status,
@@ -65,6 +66,7 @@ export type PieceResult = {
   ref: string;
   name: string;
   type: string;
+  category?: string;
   material?: string;
   completed?: string;
   status?: PieceStatus;
@@ -186,7 +188,10 @@ export const settingsQuery = groq`
     email,
     instagram,
     footer,
-    categories
+    categories,
+    maintenanceMode,
+    maintenanceHeadline,
+    maintenanceMessage
   }
 `;
 
@@ -197,6 +202,9 @@ export type SettingsResult = {
   instagram?: string;
   footer: string;
   categories?: string[];
+  maintenanceMode?: boolean;
+  maintenanceHeadline?: string;
+  maintenanceMessage?: string;
 };
 
 // ─── Image type ──────────────────────────────────────────────────────────────
