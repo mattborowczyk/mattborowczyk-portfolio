@@ -1,8 +1,10 @@
 import { cache } from "react";
 
 import { isSanityConfigured, sanityFetch } from "./client";
+import { urlFor } from "./image";
 import {
   allProductsQuery,
+  allPiecesQuery,
   allCoursesQuery,
   studioQuery,
   contactQuery,
@@ -10,6 +12,8 @@ import {
   newsletterQuery,
   settingsQuery,
   type ProductResult,
+  type PieceResult,
+  type PieceImageResult,
   type CourseResult,
   type StudioResult,
   type ContactResult,
@@ -19,6 +23,11 @@ import {
 } from "./queries";
 
 import { type Product, products as seedProducts } from "@/lib/products";
+import {
+  type Piece,
+  type PieceImage,
+  pieces as seedPieces,
+} from "@/lib/pieces";
 import { type Course, courses as seedCourses } from "@/lib/courses";
 import {
   studio as seedStudio,
@@ -79,6 +88,49 @@ export async function getProduct(
   return { product: products[index], index };
 }
 
+// ─── Portfolio pieces ────────────────────────────────────────────────────────
+
+/**
+ * Resolve a piece's authored images to sized CDN URLs. Done here rather than in
+ * the run so the client component only ever receives plain strings.
+ */
+function pieceImages(images: PieceImageResult[] | undefined): PieceImage[] {
+  return (images ?? [])
+    .filter((image): image is Required<PieceImageResult> => Boolean(image?.asset))
+    .map((image) => ({
+      url: urlFor(image).width(900).height(1200).fit("crop").auto("format").url(),
+      alt: image.alt ?? "",
+    }));
+}
+
+/**
+ * Portfolio pieces, newest first. There is no seed to fall back to (see
+ * lib/pieces.ts) — an unconfigured or empty CMS yields an empty run, and the
+ * page renders its empty state.
+ */
+export const getPieces = cache(async (): Promise<Piece[]> =>
+  withFallback<Piece[]>(
+    async () => {
+      const docs = await sanityFetch<PieceResult[]>({
+        query: allPiecesQuery,
+        tags: ["piece"],
+      });
+      return (docs ?? []).map((doc) => ({
+        ref: doc.ref,
+        name: doc.name,
+        type: doc.type,
+        material: doc.material ?? "",
+        year: doc.completed?.slice(0, 4) ?? "",
+        status: doc.status ?? "Archive",
+        description: doc.description ?? "",
+        images: pieceImages(doc.images),
+        productRef: doc.productRef,
+      }));
+    },
+    seedPieces,
+  ),
+);
+
 // ─── Courses ─────────────────────────────────────────────────────────────────
 
 export const getCourses = cache(async (): Promise<Course[]> =>
@@ -109,13 +161,19 @@ export const getStudio = cache(async (): Promise<StudioContent> =>
 
 // ─── Contact (singleton) ─────────────────────────────────────────────────────
 
+export type PricingTab = {
+  key: string;
+  label: string;
+  items: { label: string; value: string }[];
+};
+
 export type ContactContent = {
   details: { label: string; value: string; href?: string }[];
   commission: {
     headline: string;
     intro: string;
     steps: { no: string; title: string; body: string }[];
-    pricing: { label: string; value: string }[];
+    pricingTabs: PricingTab[];
   };
 };
 
@@ -125,7 +183,10 @@ const seedContact: ContactContent = {
     headline: seedCommission.headline,
     intro: seedCommission.intro,
     steps: [...seedCommission.steps],
-    pricing: [...seedCommission.pricing],
+    pricingTabs: seedCommission.pricingTabs.map((tab) => ({
+      ...tab,
+      items: [...tab.items],
+    })),
   },
 };
 
@@ -140,6 +201,12 @@ export const getContact = cache(async (): Promise<ContactContent> =>
       // Coalesce per field: a partially-filled singleton keeps whatever the
       // editor has entered and falls back to the seed for anything still blank,
       // so no section renders empty (and no undefined React keys leak through).
+      // A tab still missing its key, label or rows would render an empty (and
+      // unselectable) panel — drop it and fall back to the seed if none survive.
+      const pricingTabs = (doc.commissionPricingTabs ?? []).filter(
+        (tab) => tab?.key && tab.label && tab.items?.length,
+      );
+
       return {
         details: doc.details?.length ? doc.details : seedContact.details,
         commission: {
@@ -148,9 +215,9 @@ export const getContact = cache(async (): Promise<ContactContent> =>
           steps: doc.commissionSteps?.length
             ? doc.commissionSteps
             : seedContact.commission.steps,
-          pricing: doc.commissionPricing?.length
-            ? doc.commissionPricing
-            : seedContact.commission.pricing,
+          pricingTabs: pricingTabs.length
+            ? pricingTabs
+            : seedContact.commission.pricingTabs,
         },
       };
     },

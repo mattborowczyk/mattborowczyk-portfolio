@@ -88,8 +88,10 @@ export const contactSchema = defineType({
       ],
     }),
     defineField({
-      name: "commissionPricing",
-      title: "Commission pricing grid",
+      name: "commissionPricingTabs",
+      title: "Commission pricing tabs",
+      description:
+        "One tab per commission type (e.g. 3D Commission, Full Commission). Each tab renders its own label/value grid.",
       type: "array",
       group: "commission",
       of: [
@@ -97,19 +99,53 @@ export const contactSchema = defineType({
           type: "object",
           fields: [
             defineField({
+              name: "key",
+              title: "Key",
+              type: "slug",
+              description: "Stable id for the tab — used for state, not shown.",
+              options: { source: "label", maxLength: 32 },
+              validation: (Rule) => Rule.required(),
+            }),
+            defineField({
               name: "label",
-              title: "Label",
+              title: "Tab label",
               type: "string",
               validation: (Rule) => Rule.required(),
             }),
             defineField({
-              name: "value",
-              title: "Value",
-              type: "string",
-              validation: (Rule) => Rule.required(),
+              name: "items",
+              title: "Pricing grid",
+              type: "array",
+              of: [
+                {
+                  type: "object",
+                  fields: [
+                    defineField({
+                      name: "label",
+                      title: "Label",
+                      type: "string",
+                      validation: (Rule) => Rule.required(),
+                    }),
+                    defineField({
+                      name: "value",
+                      title: "Value",
+                      type: "string",
+                      validation: (Rule) => Rule.required(),
+                    }),
+                  ],
+                  preview: { select: { title: "label", subtitle: "value" } },
+                },
+              ],
+              validation: (Rule) => Rule.min(1),
             }),
           ],
-          preview: { select: { title: "label", subtitle: "value" } },
+          preview: {
+            select: { title: "label", items: "items" },
+            prepare: ({ title, items }) => ({
+              title,
+              subtitle: `${items?.length ?? 0} rows`,
+            }),
+          },
         },
       ],
     }),

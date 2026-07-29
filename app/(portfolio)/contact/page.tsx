@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import CommissionPricing from "@/components/commission-pricing";
 import Container from "@/components/ui/container";
 import { CtaAnchor } from "@/components/ui/cta";
 import Eyebrow from "@/components/ui/eyebrow";
@@ -67,7 +68,7 @@ export default async function ContactPage() {
           ))}
         </div>
 
-        <SpecList items={commission.pricing} className="bg-band p-md" />
+        <CommissionPricing tabs={commission.pricingTabs} />
 
         <CtaAnchor href={commissionHref} className="self-start">
           Start a commission →

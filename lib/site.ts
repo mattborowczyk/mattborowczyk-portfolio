@@ -22,9 +22,16 @@ export const categories = [
   "Tableware",
 ] as const;
 
-/** STUDIO group — page nav. */
+/**
+ * STUDIO group — page nav.
+ *
+ * The Studio page is hidden for now: its route lives in `app/(portfolio)/_studio`,
+ * and Next.js excludes `_`-prefixed folders from routing, so /studio 404s. To
+ * bring it back, rename the folder to `studio` and restore the nav entry:
+ * `{ href: "/studio", label: "Studio" },`
+ */
 export const pageNav = [
-  { href: "/studio", label: "Studio" },
+  { href: "/portfolio", label: "Portfolio" },
   { href: "/course", label: "Course" },
   { href: "/contact", label: "Contact" },
 ] as const;

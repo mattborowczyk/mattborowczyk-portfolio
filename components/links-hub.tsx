@@ -27,16 +27,7 @@ export default function LinksHub({ links }: { links: LinksContent }) {
   return (
     <div className="flex min-h-screen animate-mbfade flex-col items-center justify-center px-6 py-2xl">
       <div className="flex w-full max-w-shell-xs flex-col items-center gap-lg">
-        {/* Identity */}
         <div className="flex flex-col items-center gap-md">
-          {/* Avatar (intentionally circular — the one rounded shape in the design) */}
-          <div className="relative flex h-[4.25rem] w-[4.25rem] items-center justify-center overflow-hidden rounded-full bg-sage-01">
-            <div className="render-stripe absolute inset-0" />
-            <span className="relative font-mono text-3xs tracking-wide-md text-ink-fainter">
-              MB
-            </span>
-          </div>
-
           <div className="flex flex-col items-center gap-3xs">
             <div className="font-serif text-display-md font-medium text-ink">
               mattborowczyk

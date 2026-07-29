@@ -28,11 +28,33 @@ export const commission = {
     { no: "03", title: "Approval", body: "We refine the geometry until it is exactly right." },
     { no: "04", title: "Cast & finish", body: "Cast in silver or gold, finished by hand, shipped." },
   ],
-  pricing: [
-    { label: "3D design", value: "from £120" },
-    { label: "Full commission", value: "from £400" },
-    { label: "Lead time", value: "3–5 weeks" },
-    { label: "Revisions", value: "Until approved" },
+  /**
+   * Pricing is split per commission type — the contact page renders these as a
+   * segmented control so each tier keeps its own price, lead time and scope.
+   */
+  pricingTabs: [
+    {
+      key: "3d",
+      label: "3D Commission",
+      items: [
+        { label: "Price", value: "from £120" },
+        { label: "Includes", value: "3D model · turntable renders" },
+        { label: "Delivered", value: "Print-ready file (STL / OBJ)" },
+        { label: "Lead time", value: "1–2 weeks" },
+        { label: "Revisions", value: "Until approved" },
+      ],
+    },
+    {
+      key: "full",
+      label: "Full Commission",
+      items: [
+        { label: "Price", value: "from £400" },
+        { label: "Includes", value: "3D design · casting · hand finish" },
+        { label: "Materials", value: "Silver 925 · 18k Gold" },
+        { label: "Lead time", value: "3–5 weeks" },
+        { label: "Revisions", value: "Until approved" },
+      ],
+    },
   ],
 } as const;
 

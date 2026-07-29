@@ -1,6 +1,7 @@
 import { groq } from "next-sanity";
 
 import type { Product } from "@/lib/products";
+import type { PieceStatus } from "@/lib/pieces";
 import type { Course } from "@/lib/courses";
 
 /**
@@ -33,6 +34,44 @@ export const allProductsQuery = groq`
 `;
 
 export type ProductResult = Product;
+
+// ─── Portfolio pieces ────────────────────────────────────────────────────────
+
+/**
+ * Newest first. Images come back raw (asset refs) so fetch-data can run them
+ * through the image URL builder server-side — the run renders plain URLs.
+ */
+export const allPiecesQuery = groq`
+  *[_type == "piece" && defined(ref)] | order(completed desc, _createdAt desc) {
+    "ref": ref,
+    name,
+    type,
+    material,
+    completed,
+    status,
+    description,
+    images[]{ ..., alt },
+    "productRef": product->ref
+  }
+`;
+
+/** A raw Sanity image as returned by the projection above. */
+export type PieceImageResult = {
+  asset?: { _ref: string; _type: "reference" };
+  alt?: string;
+};
+
+export type PieceResult = {
+  ref: string;
+  name: string;
+  type: string;
+  material?: string;
+  completed?: string;
+  status?: PieceStatus;
+  description?: string;
+  images?: PieceImageResult[];
+  productRef?: string;
+};
 
 // ─── Courses ─────────────────────────────────────────────────────────────────
 
@@ -78,7 +117,11 @@ export const contactQuery = groq`
     commissionHeadline,
     commissionIntro,
     commissionSteps[]{ no, title, body },
-    commissionPricing[]{ label, value }
+    commissionPricingTabs[]{
+      "key": key.current,
+      label,
+      items[]{ label, value }
+    }
   }
 `;
 
@@ -87,7 +130,11 @@ export type ContactResult = {
   commissionHeadline: string;
   commissionIntro: string;
   commissionSteps: { no: string; title: string; body: string }[];
-  commissionPricing: { label: string; value: string }[];
+  commissionPricingTabs: {
+    key: string;
+    label: string;
+    items: { label: string; value: string }[];
+  }[];
 };
 
 // ─── Links (singleton) ───────────────────────────────────────────────────────
