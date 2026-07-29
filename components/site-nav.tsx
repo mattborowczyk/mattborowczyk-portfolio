@@ -101,11 +101,12 @@ function NavGroup({
 
 /**
  * The site chrome, split across two fixed rails on desktop: the shop/portfolio
- * filters on the left under the wordmark, the page nav on the right. Below the
- * `nav` breakpoint both collapse into the single top bar.
+ * filters on the left, the page nav on the right. Below the `nav` breakpoint
+ * both collapse into the single top bar.
  *
- * The left rail keeps the wordmark and the studio meta on every route — only
- * the filter block comes and goes, so the frame never shifts under the content.
+ * Both link groups sit at the vertical centre of the rail — the wordmark stays
+ * pinned at the top of the left rail and the studio meta at its bottom, but the
+ * filters (and, on the right, the page nav) float in the middle of the screen.
  */
 export default function SiteNav({ settings }: { settings: SiteSettings }) {
   const pathname = usePathname();
@@ -114,13 +115,14 @@ export default function SiteNav({ settings }: { settings: SiteSettings }) {
   const pageItems = pageNav.map((p) => ({
     label: p.label,
     href: p.href,
-    active: pathname.startsWith(p.href),
+    // "/" would startsWith-match every route, so Catalogue needs an exact check.
+    active: p.href === "/" ? pathname === "/" : pathname.startsWith(p.href),
   }));
 
   return (
     <>
       {/* ── Desktop: left rail (brand + filters) ─────────────────── */}
-      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-rail flex-col gap-lg bg-bone px-6 py-7 nav:flex">
+      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-rail flex-col bg-bone px-6 py-7 nav:flex">
         <Link
           href="/"
           className="font-serif text-display-xs font-medium text-gold transition-opacity hover:opacity-65"
@@ -128,17 +130,19 @@ export default function SiteNav({ settings }: { settings: SiteSettings }) {
           {settings.name}
         </Link>
 
-        {filters && <NavGroup label={filters.label} items={filters.items} />}
+        <div className="flex flex-1 flex-col justify-center">
+          {filters && <NavGroup label={filters.label} items={filters.items} />}
+        </div>
 
-        <div className="mt-auto font-mono text-2xs uppercase leading-relaxed tracking-wide-lg text-label-lighter">
+        <div className="font-mono text-2xs uppercase leading-relaxed tracking-wide-lg text-label-lighter">
           <div>{settings.footer}</div>
           <div>© {new Date().getFullYear()}</div>
         </div>
       </aside>
 
       {/* ── Desktop: right rail (pages) ──────────────────────────── */}
-      <aside className="fixed right-0 top-0 z-40 hidden h-screen w-rail-right flex-col bg-bone px-6 py-7 nav:flex">
-        <NavGroup label="Studio" items={pageItems} align="right" />
+      <aside className="fixed right-0 top-0 z-40 hidden h-screen w-rail-right flex-col justify-center bg-bone px-6 py-7 nav:flex">
+        <NavGroup label="Menu" items={pageItems} align="right" />
       </aside>
 
       {/* ── Mobile top bar ───────────────────────────────────────── */}

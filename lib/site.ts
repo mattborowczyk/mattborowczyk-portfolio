@@ -45,7 +45,10 @@ export const portfolioCategories = [
 export const PORTFOLIO_ALL = portfolioCategories[0];
 
 /**
- * STUDIO group — page nav.
+ * Right-rail page nav. "Catalogue" links back to the shop — with the filter
+ * taxonomy now living on the left rail (and only on pages that have one), the
+ * logo was the only way back to "/"; that's too easy to miss, so it gets its
+ * own entry here too.
  *
  * The Studio page is hidden for now: its route lives in `app/(portfolio)/_studio`,
  * and Next.js excludes `_`-prefixed folders from routing, so /studio 404s. To
@@ -53,6 +56,7 @@ export const PORTFOLIO_ALL = portfolioCategories[0];
  * `{ href: "/studio", label: "Studio" },`
  */
 export const pageNav = [
+  { href: "/", label: "Catalogue" },
   { href: "/portfolio", label: "Portfolio" },
   { href: "/course", label: "Course" },
   { href: "/contact", label: "Contact" },
