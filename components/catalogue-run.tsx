@@ -14,6 +14,7 @@ import {
   materialLabel,
   toneFor,
 } from "@/lib/products";
+import { cn } from "@/lib/utils";
 
 /** Name + price row shared by the hover card and the mobile caption. */
 function PieceHeading({ name, price }: { name: string; price: string }) {
@@ -72,8 +73,10 @@ export default function CatalogueRun({
       <Container className="flex flex-col gap-run pb-3xl">
         {matched.map((p, i) => {
           const gi = products.indexOf(p);
-          // Alternate the run left/right of centre (desktop only).
+          // Alternate the run left/right of centre (desktop only). The info
+          // card then goes to the opposite side, where the space is.
           const tx = i % 2 === 0 ? "-3.25rem" : "3.25rem";
+          const cardSide = i % 2 === 0 ? "right" : "left";
           const isHover = hovered === p.ref;
           const isDwell = dwelled === p.ref;
           return (
@@ -109,9 +112,15 @@ export default function CatalogueRun({
                   />
                 </Link>
 
-                {/* Straddling info card (desktop, after 500ms dwell) */}
+                {/* Info card (desktop, after 500ms dwell) — parked in the
+                    margin on the side the piece is offset away from. */}
                 <div
-                  className="absolute bottom-[-2.875rem] left-1/2 z-10 hidden w-[min(90%,14.75rem)] -translate-x-1/2 flex-col gap-2xs bg-card px-md pb-sm pt-3.5 shadow-card transition-opacity duration-base nav:flex"
+                  className={cn(
+                    "absolute top-1/2 z-10 hidden w-[var(--hover-card-width)] -translate-y-1/2 flex-col gap-2xs bg-card-veil px-md pb-sm pt-3.5 shadow-card backdrop-blur-sm transition-opacity duration-base nav:flex",
+                    cardSide === "right"
+                      ? "left-full ml-[calc(-1*var(--hover-card-overlap))]"
+                      : "right-full mr-[calc(-1*var(--hover-card-overlap))]",
+                  )}
                   style={{
                     opacity: isDwell ? 1 : 0,
                     pointerEvents: isDwell ? "auto" : "none",

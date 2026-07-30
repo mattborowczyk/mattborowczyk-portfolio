@@ -21,6 +21,7 @@
     --bone: #f2eee4; /* page background */
     --bone-veil: rgba(242, 238, 228, 0.92); /* bone behind a backdrop-blur */
     --card: #ede9df; /* card / raised surface */
+    --card-veil: rgba(237, 233, 223, 0.82); /* card over a render, softened */
     --band: #eae6db; /* muted band / spec block */
     --ink: #1c1916; /* near-black — text, buttons */
     --gold: #b08d4f; /* champagne gold accent */
@@ -111,6 +112,14 @@
        Fixed nav rail width; the content offset is derived from it. */
     --rail-width: 12.875rem; /* 206px — left rail: brand + filters */
     --rail-right-width: 9.5rem; /* 152px — right rail: page nav */
+
+    /* ── Hover card ────────────────────────────────────────────────────
+       The run's info card sits in the empty margin beside a piece, on
+       whichever side the piece is *not* offset toward. It only clips the
+       image by `overlap`; the rest hangs in the gutter, so the width has
+       to shrink on narrower desktops to stay clear of the nav rails. */
+    --hover-card-width: clamp(10.5rem, 18vw, 14.75rem);
+    --hover-card-overlap: 2.5rem;
     --topbar-height: 7.25rem; /* 116px — mobile bar + breathing room */
   }
 

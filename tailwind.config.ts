@@ -116,7 +116,10 @@ const config: Config = {
           DEFAULT: "var(--bone)", // page background
           veil: "var(--bone-veil)", // translucent, for the blurred top bar
         },
-        card: "var(--card)", // card / raised surface
+        card: {
+          DEFAULT: "var(--card)", // card / raised surface
+          veil: "var(--card-veil)", // translucent, for cards over a render
+        },
         band: "var(--band)", // muted band / spec block
         ink: {
           DEFAULT: "var(--ink)", // near-black — text, buttons
