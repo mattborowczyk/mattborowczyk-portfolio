@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 
 import RenderPlaceholder from "@/components/render-placeholder";
@@ -10,21 +11,68 @@ import { UnderlineAnchor } from "@/components/ui/underline-link";
 import { ALL_PIECES, commissionMailto } from "@/lib/site";
 import {
   type Product,
+  type ProductMedia,
   altToneFor,
   materialLabel,
   toneFor,
 } from "@/lib/products";
 import { cn } from "@/lib/utils";
 
-/** Name + price row shared by the hover card and the mobile caption. */
-function PieceHeading({ name, price }: { name: string; price: string }) {
+/**
+ * Name + price row shared by the hover card and the mobile caption. A piece
+ * with no price just shows its name — no empty column, no placeholder dash.
+ */
+function PieceHeading({ name, price }: { name: string; price?: string }) {
   return (
     <div className="flex items-baseline justify-between gap-3xs">
       <span className="font-sans text-base font-bold leading-none text-ink">
         {name}
       </span>
-      <span className="font-mono text-sm text-ink">{price}</span>
+      {price && <span className="font-mono text-sm text-ink">{price}</span>}
     </div>
+  );
+}
+
+/** One media slot in the run — a still, an animated GIF, or a looping clip. */
+function PieceMedia({
+  item,
+  name,
+  overlay = false,
+  show = true,
+}: {
+  item: ProductMedia;
+  name: string;
+  /** Overlay layers sit above the base still and are decorative. */
+  overlay?: boolean;
+  show?: boolean;
+}) {
+  const style = overlay ? { opacity: show ? 1 : 0 } : undefined;
+  if (item.kind === "video") {
+    return (
+      <video
+        src={item.url}
+        autoPlay
+        loop
+        muted
+        playsInline
+        aria-hidden={overlay || undefined}
+        className="absolute inset-0 h-full w-full object-cover transition-opacity duration-base"
+        style={style}
+      />
+    );
+  }
+  return (
+    <Image
+      src={item.url}
+      alt={overlay ? "" : item.alt || name}
+      fill
+      sizes="(min-width: 60rem) 22.5rem, 82vw"
+      aria-hidden={overlay || undefined}
+      className="object-cover transition-opacity duration-base"
+      // GIFs are served untransformed; skip the optimiser so they keep moving.
+      unoptimized={item.url.toLowerCase().includes(".gif")}
+      style={style}
+    />
   );
 }
 
@@ -97,19 +145,35 @@ export default function CatalogueRun({
                   className="relative block aspect-[3/4] overflow-hidden"
                   style={{ backgroundColor: toneFor(gi) }}
                 >
-                  <RenderPlaceholder
-                    tone={toneFor(gi)}
-                    code={p.ref}
-                    className="absolute inset-0"
-                  />
-                  <div
-                    className="render-stripe-45 absolute inset-0 transition-opacity duration-base"
-                    style={{
-                      backgroundColor: altToneFor(gi),
-                      opacity: isHover ? 1 : 0,
-                    }}
-                    aria-hidden="true"
-                  />
+                  {p.media.length > 0 ? (
+                    <PieceMedia item={p.media[0]} name={p.name} />
+                  ) : (
+                    <RenderPlaceholder
+                      tone={toneFor(gi)}
+                      code={p.ref}
+                      className="absolute inset-0"
+                    />
+                  )}
+
+                  {/* Hover: the second media item if there is one, else the
+                      tonal stripe the run has always used. */}
+                  {p.media.length > 1 ? (
+                    <PieceMedia
+                      item={p.media[1]}
+                      name={p.name}
+                      overlay
+                      show={isHover}
+                    />
+                  ) : (
+                    <div
+                      className="render-stripe-45 absolute inset-0 transition-opacity duration-base"
+                      style={{
+                        backgroundColor: altToneFor(gi),
+                        opacity: isHover ? 1 : 0,
+                      }}
+                      aria-hidden="true"
+                    />
+                  )}
                 </Link>
 
                 {/* Info card (desktop, after 500ms dwell) — parked in the

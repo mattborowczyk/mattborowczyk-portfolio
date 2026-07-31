@@ -1,6 +1,7 @@
 import { cache } from "react";
 
 import { isSanityConfigured, sanityFetch } from "./client";
+import { urlFor } from "./image";
 import {
   allProductsQuery,
   allCoursesQuery,
@@ -10,6 +11,7 @@ import {
   newsletterQuery,
   settingsQuery,
   type ProductResult,
+  type ProductMediaResult,
   type CourseResult,
   type StudioResult,
   type ContactResult,
@@ -18,7 +20,11 @@ import {
   type SettingsResult,
 } from "./queries";
 
-import { type Product, products as seedProducts } from "@/lib/products";
+import {
+  type Product,
+  type ProductMedia,
+  products as seedProducts,
+} from "@/lib/products";
 import { type Course, courses as seedCourses } from "@/lib/courses";
 import {
   studio as seedStudio,
@@ -66,13 +72,58 @@ async function withFallback<T>(
 
 // ─── Products ────────────────────────────────────────────────────────────────
 
-export const getProducts = cache(async (): Promise<Product[]> =>
-  withFallback(
-    () => sanityFetch<ProductResult[]>({ query: allProductsQuery, tags: ["product"] }),
+/**
+ * Resolve a piece's media to ready-to-render URLs, so the client components
+ * only ever receive plain strings.
+ *
+ * Anything that moves — video, and GIFs — is served straight from the CDN:
+ * putting a GIF through the image pipeline flattens it to a single frame.
+ * Stills get resized and format-negotiated as usual.
+ */
+function productMedia(media: ProductMediaResult[] | undefined): ProductMedia[] {
+  return (media ?? [])
+    .filter((item) => item?.url)
+    .map((item) => {
+      const isVideo =
+        item.type === "file" || Boolean(item.mime?.startsWith("video/"));
+      const isAnimated = isVideo || item.mime === "image/gif";
+      return {
+        kind: isVideo ? ("video" as const) : ("image" as const),
+        url:
+          isAnimated || !item.assetId
+            ? item.url!
+            : urlFor(item.assetId).width(1600).auto("format").url(),
+        alt: item.alt ?? "",
+      };
+    });
+}
+
+/** Newest made first. ISO dates sort lexicographically, so a plain compare works. */
+const byMadeDesc = (a: Product, b: Product) =>
+  (b.made ?? "").localeCompare(a.made ?? "");
+
+/**
+ * The run is ordered by the date a piece was *made*. The GROQ query already
+ * sorts, but the sort is re-applied here so the local seed obeys the same rule
+ * and the ordering contract lives in one place rather than in array order.
+ */
+export const getProducts = cache(async (): Promise<Product[]> => {
+  const list = await withFallback(
+    async () => {
+      const docs = await sanityFetch<ProductResult[]>({
+        query: allProductsQuery,
+        tags: ["product"],
+      });
+      return (docs ?? []).map((doc) => ({
+        ...doc,
+        media: productMedia(doc.media),
+      }));
+    },
     seedProducts,
     (list) => list.length === 0,
-  ),
-);
+  );
+  return [...list].sort(byMadeDesc);
+});
 
 export async function getProduct(
   ref: string,

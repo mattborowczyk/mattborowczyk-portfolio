@@ -12,27 +12,52 @@ import type { Course } from "@/lib/courses";
 
 // ─── Products ────────────────────────────────────────────────────────────────
 
+/**
+ * Media comes back with the asset dereferenced rather than transformed: the
+ * mime type decides whether fetch-data runs a still through the image pipeline
+ * or serves the file untouched (GIFs and video have to stay as uploaded).
+ */
 const productFields = groq`
   "ref": ref,
   name,
   type,
   category,
   material,
+  made,
   price,
   weight,
   dimensions,
-  finish,
+  details,
   leadTime,
-  description
+  description,
+  media[]{
+    "type": _type,
+    alt,
+    "assetId": asset->_id,
+    "url": asset->url,
+    "mime": asset->mimeType
+  }
 `;
 
+/** Newest made first; `_createdAt` only breaks ties on the same day. */
 export const allProductsQuery = groq`
-  *[_type == "product" && defined(ref)] | order(order asc, _createdAt asc) {
+  *[_type == "product" && defined(ref)] | order(made desc, _createdAt desc) {
     ${productFields}
   }
 `;
 
-export type ProductResult = Product;
+/** A raw media entry as returned by the projection above. */
+export type ProductMediaResult = {
+  type?: "image" | "file";
+  alt?: string;
+  assetId?: string;
+  url?: string;
+  mime?: string;
+};
+
+export type ProductResult = Omit<Product, "media"> & {
+  media?: ProductMediaResult[];
+};
 
 // ─── Courses ─────────────────────────────────────────────────────────────────
 
