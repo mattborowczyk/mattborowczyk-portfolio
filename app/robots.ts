@@ -1,10 +1,9 @@
 import type { MetadataRoute } from "next";
 
+import { BASE_URL } from "@/lib/site";
 import { getSettings } from "@/sanity/lib/fetch-data";
 
 export const revalidate = 60;
-
-const BASE_URL = "https://mattborowczyk.com";
 
 /**
  * `/admin` (Studio) and `/links` (bio hub) are kept out of the index in every

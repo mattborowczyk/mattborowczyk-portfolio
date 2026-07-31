@@ -45,9 +45,19 @@ const productFields = groq`
   }
 `;
 
-/** Newest made first; `_createdAt` only breaks ties on the same day. */
+/**
+ * Newest made first; `_createdAt` only breaks ties on the same day.
+ *
+ * Filters on `made` as well as `ref` because both are non-optional in
+ * `ProductResult`, and `made` is the sort key for the entire run. The schema
+ * requires it, but schema validation only binds at edit time — a document
+ * written by the API, or predating the field, would otherwise arrive with
+ * `made: null` against a type promising `string`. Same rule as
+ * `allCoursesQuery`: the query only returns what the type actually claims.
+ */
 export const allProductsQuery = groq`
-  *[_type == "product" && defined(ref)] | order(made desc, _createdAt desc) {
+  *[_type == "product" && defined(ref) && defined(made)]
+    | order(made desc, _createdAt desc) {
     ${productFields}
   }
 `;

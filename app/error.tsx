@@ -20,7 +20,14 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[render]", error);
+    // The browser console is the visitor's, so only the full error is dev-only.
+    // In production log just the digest — the id that correlates to the real
+    // stack in the server logs — and nothing that could leak internals.
+    if (process.env.NODE_ENV === "production") {
+      if (error.digest) console.error(`[render] digest: ${error.digest}`);
+    } else {
+      console.error("[render]", error);
+    }
   }, [error]);
 
   return (

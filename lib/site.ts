@@ -3,6 +3,13 @@
  * social links and nav taxonomy so they never drift across pages.
  * These become CMS-backed globals in Phase 3.
  */
+/**
+ * Canonical origin, no trailing slash. Single source for the sitemap, robots
+ * and `metadataBase` — these must agree on the host or search engines get
+ * contradictory canonical signals.
+ */
+export const BASE_URL = "https://mattborowczyk.com";
+
 export const site = {
   name: "mattborowczyk",
   tagline: "Jewellery & Objects",

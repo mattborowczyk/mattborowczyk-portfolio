@@ -1,10 +1,9 @@
 import type { MetadataRoute } from "next";
 
+import { BASE_URL } from "@/lib/site";
 import { getProducts, getSettings } from "@/sanity/lib/fetch-data";
 
 export const revalidate = 60;
-
-const BASE_URL = "https://mattborowczyk.com";
 
 /**
  * Static routes plus a live entry per piece. `/links` is deliberately absent —

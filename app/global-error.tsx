@@ -16,7 +16,13 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("[global]", error);
+    // Same rule as app/error.tsx: full detail in development, only the
+    // correlating digest in production.
+    if (process.env.NODE_ENV === "production") {
+      if (error.digest) console.error(`[global] digest: ${error.digest}`);
+    } else {
+      console.error("[global]", error);
+    }
   }, [error]);
 
   return (
