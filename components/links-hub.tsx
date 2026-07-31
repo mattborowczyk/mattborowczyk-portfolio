@@ -5,7 +5,7 @@ import Link from "next/link";
 import { openNewsletter } from "@/components/newsletter-card";
 import SocialIcons from "@/components/social-icons";
 import Eyebrow from "@/components/ui/eyebrow";
-import type { LinksContent } from "@/sanity/lib/fetch-data";
+import type { LinksContent, SiteSettings } from "@/sanity/lib/fetch-data";
 
 const rowClass =
   "flex w-full items-center justify-between border border-hairline-md px-5 py-4 text-left font-sans text-base text-ink transition-colors hover:border-hairline-strong hover:bg-band";
@@ -22,17 +22,25 @@ function Arrow() {
 }
 
 /** Hidden bio-link hub (link-in-bio). Not in nav; direct URL only. */
-export default function LinksHub({ links }: { links: LinksContent }) {
+export default function LinksHub({
+  links,
+  settings,
+}: {
+  links: LinksContent;
+  settings: SiteSettings;
+}) {
   const { items, socials } = links;
   return (
     <div className="flex min-h-screen animate-mbfade flex-col items-center justify-center px-6 py-2xl">
       <div className="flex w-full max-w-shell-xs flex-col items-center gap-lg">
         <div className="flex flex-col items-center gap-md">
           <div className="flex flex-col items-center gap-3xs">
+            {/* From Site Settings like every other surface — these two were
+                the last hardcoded copies of the brand name and tagline. */}
             <div className="font-serif text-display-md font-medium text-ink">
-              mattborowczyk
+              {settings.name}
             </div>
-            <Eyebrow size="2xs">Jewellery &amp; Objects</Eyebrow>
+            {settings.tagline && <Eyebrow size="2xs">{settings.tagline}</Eyebrow>}
           </div>
         </div>
 

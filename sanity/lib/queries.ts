@@ -1,7 +1,11 @@
 import { groq } from "next-sanity";
+import type {
+  SanityImageCrop,
+  SanityImageHotspot,
+} from "@sanity/image-url/lib/types/types";
 
 import type { Product } from "@/lib/products";
-import type { Course } from "@/lib/courses";
+import type { CourseModule } from "@/lib/courses";
 
 /**
  * GROQ queries + result types for the Phase 3 content model. Each projection
@@ -33,6 +37,8 @@ const productFields = groq`
   media[]{
     "type": _type,
     alt,
+    hotspot,
+    crop,
     "assetId": asset->_id,
     "url": asset->url,
     "mime": asset->mimeType
@@ -50,6 +56,9 @@ export const allProductsQuery = groq`
 export type ProductMediaResult = {
   type?: "image" | "file";
   alt?: string;
+  /** Editor crop/focal point — only meaningful for stills. */
+  hotspot?: SanityImageHotspot;
+  crop?: SanityImageCrop;
   assetId?: string;
   url?: string;
   mime?: string;
@@ -62,7 +71,8 @@ export type ProductResult = Omit<Product, "media"> & {
 // ─── Courses ─────────────────────────────────────────────────────────────────
 
 export const allCoursesQuery = groq`
-  *[_type == "course" && defined(key)] | order(order asc, _createdAt asc) {
+  *[_type == "course" && defined(key) && defined(label) && defined(headline)]
+    | order(order asc, _createdAt asc) {
     key,
     label,
     headline,
@@ -77,7 +87,25 @@ export const allCoursesQuery = groq`
   }
 `;
 
-export type CourseResult = Course;
+/**
+ * The *raw* shape of the projection above — deliberately not `Course`. GROQ
+ * returns null for any attribute the document hasn't set, including arrays,
+ * so nothing beyond the fields the query filters on can be assumed present.
+ * `getCourses` normalises this into `Course`.
+ */
+export type CourseResult = {
+  key: string;
+  label: string;
+  headline: string;
+  intro?: string | null;
+  price?: string | null;
+  meta?: string | null;
+  level?: string | null;
+  length?: string | null;
+  checkoutUrl?: string | null;
+  modules?: (Partial<CourseModule> | null)[] | null;
+  includes?: (string | null)[] | null;
+};
 
 // ─── Studio (singleton) ──────────────────────────────────────────────────────
 

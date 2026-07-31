@@ -50,6 +50,22 @@ export const pageNav = [
 ] as const;
 
 /**
+ * Resolve a raw `?filter=` value against the live taxonomy. Anything unknown
+ * (stale bookmark, hand-edited URL, a category since renamed in the CMS)
+ * collapses to `ALL_PIECES`.
+ *
+ * Shared so the run and the rail can't disagree: they previously derived this
+ * separately, and an unrecognised filter showed every piece while leaving no
+ * rail entry highlighted.
+ */
+export function resolveFilter(
+  categories: readonly string[],
+  raw: string | null | undefined,
+): string {
+  return raw && categories.includes(raw) ? raw : ALL_PIECES;
+}
+
+/**
  * Build a prefilled commission mailto for a given piece (or a general one).
  * `email` is passed in so callers use the CMS-backed brand email (with the
  * seed `site.email` as the fallback source).

@@ -1,14 +1,15 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 import RenderPlaceholder from "@/components/render-placeholder";
 import Container from "@/components/ui/container";
 import Eyebrow from "@/components/ui/eyebrow";
 import { UnderlineAnchor } from "@/components/ui/underline-link";
-import { ALL_PIECES, commissionMailto } from "@/lib/site";
+import { ALL_PIECES, commissionMailto, resolveFilter } from "@/lib/site";
 import {
   type Product,
   type ProductMedia,
@@ -48,6 +49,10 @@ function PieceMedia({
 }) {
   const style = overlay ? { opacity: show ? 1 : 0 } : undefined;
   if (item.kind === "video") {
+    // Only mounted while hovered: a permanently-mounted overlay video would
+    // download and decode continuously behind an opacity of 0, for every piece
+    // in the run at once.
+    if (overlay && !show) return null;
     return (
       <video
         src={item.url}
@@ -55,6 +60,7 @@ function PieceMedia({
         loop
         muted
         playsInline
+        preload="metadata"
         aria-hidden={overlay || undefined}
         className="absolute inset-0 h-full w-full object-cover transition-opacity duration-base"
         style={style}
@@ -69,8 +75,10 @@ function PieceMedia({
       sizes="(min-width: 60rem) 22.5rem, 82vw"
       aria-hidden={overlay || undefined}
       className="object-cover transition-opacity duration-base"
-      // GIFs are served untransformed; skip the optimiser so they keep moving.
-      unoptimized={item.url.toLowerCase().includes(".gif")}
+      // Animated sources are served untransformed; the optimiser would flatten
+      // a GIF to a single frame. `animated` comes from the asset's real mime
+      // type (see sanity/lib/fetch-data.ts) rather than sniffing the URL.
+      unoptimized={item.animated}
       style={style}
     />
   );
@@ -84,22 +92,40 @@ function PieceMedia({
  */
 export default function CatalogueRun({
   products,
-  filter,
+  categories,
   email,
 }: {
   products: Product[];
-  filter: string;
+  categories: readonly string[];
   email: string;
 }) {
   const [hovered, setHovered] = useState<string | null>(null);
   const [dwelled, setDwelled] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Read here rather than on the server, so the page stays statically rendered.
+  const filter = resolveFilter(categories, useSearchParams().get("filter"));
+
   const isAll = filter === ALL_PIECES;
   const matched = products.filter((p) => isAll || p.category === filter);
   const minimised = isAll
     ? []
     : products.filter((p) => p.category !== filter);
+
+  // Tone assignment keys off a piece's position in the full run, so it stays
+  // stable as filters change. Precomputed — this used to be an indexOf() per
+  // row inside the render loop.
+  const toneIndex = useMemo(
+    () => new Map(products.map((p, i) => [p.ref, i])),
+    [products],
+  );
+
+  // A pending dwell timer would otherwise fire into an unmounted tree.
+  useEffect(() => {
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, []);
 
   function enter(ref: string) {
     setHovered(ref);
@@ -120,7 +146,7 @@ export default function CatalogueRun({
 
       <Container className="flex flex-col gap-run pb-3xl">
         {matched.map((p, i) => {
-          const gi = products.indexOf(p);
+          const gi = toneIndex.get(p.ref) ?? 0;
           // Alternate the run left/right of centre (desktop only). The info
           // card then goes to the opposite side, where the space is.
           const tx = i % 2 === 0 ? "-3.25rem" : "3.25rem";
@@ -223,7 +249,7 @@ export default function CatalogueRun({
                 href="/"
                 aria-label={`Show all — ${p.ref}`}
                 className="flex h-[3.375rem] w-[3.375rem] items-center justify-center transition-transform duration-fast hover:scale-[1.08]"
-                style={{ backgroundColor: toneFor(products.indexOf(p)) }}
+                style={{ backgroundColor: toneFor(toneIndex.get(p.ref) ?? 0) }}
               >
                 <span className="font-mono text-3xs text-ink-faint">
                   {p.ref}

@@ -6,8 +6,14 @@ import { getNewsletter, getSettings } from "@/sanity/lib/fetch-data";
 /**
  * Coming soon mode is deliberately gated here rather than in middleware: the
  * flag lives in Sanity (so it flips without a deploy) and this is the highest
- * point that already has `settings` in hand. Not rendering `children` means the
- * page underneath never runs — nothing behind the curtain is fetched or served.
+ * point that already has `settings` in hand.
+ *
+ * Note what this does and doesn't guarantee. Next renders a layout and its page
+ * *in parallel*, so the page underneath still executes and still runs its own
+ * queries; returning `ComingSoon` instead of `children` discards that output, so
+ * nothing behind the curtain is ever sent to the client. It hides the site — it
+ * is not a way to stop the work behind it happening. If that ever matters (a
+ * paid data source, say), the gate has to move into middleware.
  *
  * The Studio at /admin sits in its own route group and is unaffected, and the
  * curtain is skipped in development so the site stays workable locally while

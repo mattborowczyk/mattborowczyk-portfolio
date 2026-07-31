@@ -17,6 +17,12 @@ export type ProductMedia = {
   kind: "image" | "video";
   url: string;
   alt: string;
+  /**
+   * GIF or video — anything whose frames must survive. Derived from the asset's
+   * mime type when the media is resolved, so consumers never have to guess from
+   * the URL. Images flagged `animated` bypass the Next image optimiser.
+   */
+  animated: boolean;
 };
 
 export interface Product {
@@ -57,9 +63,19 @@ export const products: Product[] = [
 export const tones = ["#cdd3c7", "#c4cdc2", "#bcc5bb", "#d4d5ca", "#c8cfc1", "#c0c7bd", "#cccfc3", "#c6cdbf"];
 export const altTones = ["#bfc7bb", "#cdd2c6", "#b4bdb2", "#cacbbf", "#bdc4b6", "#d0d3c8", "#c2c8bb", "#bbc2b4"];
 
-/** Human-facing material label (matches the prototype spec sheet). */
+/**
+ * Human-facing material label (matches the prototype spec sheet). The Studio
+ * offers a fixed list, but that's only enforced at edit time — a value stored
+ * before the list changed is passed through as-is rather than silently
+ * relabelled as gold.
+ */
+const materialLabels: Record<string, string> = {
+  Silver: "Silver 925",
+  Gold: "18k Gold",
+};
+
 export function materialLabel(material: Material): string {
-  return material === "Silver" ? "Silver 925" : "18k Gold";
+  return materialLabels[material] ?? material;
 }
 
 export function toneFor(index: number): string {
@@ -79,10 +95,3 @@ export function productViews(index: number): string[] {
   ];
 }
 
-export function getProduct(ref: string): Product | undefined {
-  return products.find((p) => p.ref === ref);
-}
-
-export function productIndex(ref: string): number {
-  return products.findIndex((p) => p.ref === ref);
-}

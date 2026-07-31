@@ -1,0 +1,15 @@
+# Netlify build configuration.
+#
+# The Next.js runtime is detected and installed automatically, so there is no
+# plugin block here. Edge functions are picked up from netlify/edge-functions/
+# (the default location) — see newsletter-guard.ts for the rate limit, which is
+# configured in that file rather than here, because Netlify only reads
+# rateLimit from a function's exported config.
+
+[build]
+  command = "pnpm build"
+  publish = ".next"
+
+[build.environment]
+  # Pinned so CI, local and deploy builds agree.
+  NODE_VERSION = "22"

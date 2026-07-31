@@ -38,8 +38,9 @@ function MediaFrame({ item, name }: { item: ProductMedia; name: string }) {
       priority
       sizes="100vw"
       className="object-cover"
-      // GIFs are served untransformed; skip the optimiser so they keep moving.
-      unoptimized={item.url.toLowerCase().includes(".gif")}
+      // Animated sources are served untransformed; the optimiser would flatten
+      // a GIF to a single frame. Flag comes from the asset's real mime type.
+      unoptimized={item.animated}
     />
   );
 }
