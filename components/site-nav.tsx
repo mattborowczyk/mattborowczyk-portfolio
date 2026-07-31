@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
 import Eyebrow from "@/components/ui/eyebrow";
-import { PORTFOLIO_ALL, pageNav, portfolioCategories } from "@/lib/site";
+import { pageNav } from "@/lib/site";
 import type { SiteSettings } from "@/sanity/lib/fetch-data";
 import { cn } from "@/lib/utils";
 
@@ -31,9 +31,9 @@ function filterEntries(
 }
 
 /**
- * Which filter taxonomy — if any — belongs on this route. The shop and the
- * portfolio each own one; every other page shows none, so the rails stay quiet
- * on reading pages.
+ * Which filter taxonomy — if any — belongs on this route. Only the portfolio
+ * run at "/" owns one; every other page shows none, so the rails stay quiet on
+ * reading pages.
  */
 function useFilterRail(settings: SiteSettings): FilterRail | null {
   const pathname = usePathname();
@@ -41,14 +41,8 @@ function useFilterRail(settings: SiteSettings): FilterRail | null {
 
   if (pathname === "/") {
     return {
-      label: "Catalogue",
-      items: filterEntries(settings.categories, "/", activeParam),
-    };
-  }
-  if (pathname === "/portfolio") {
-    return {
       label: "Portfolio",
-      items: filterEntries(portfolioCategories, "/portfolio", activeParam),
+      items: filterEntries(settings.categories, "/", activeParam),
     };
   }
   return null;
@@ -100,7 +94,7 @@ function NavGroup({
 }
 
 /**
- * The site chrome, split across two fixed rails on desktop: the shop/portfolio
+ * The site chrome, split across two fixed rails on desktop: the portfolio
  * filters on the left, the page nav on the right. Below the `nav` breakpoint
  * both collapse into the single top bar.
  *

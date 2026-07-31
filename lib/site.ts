@@ -8,47 +8,35 @@ export const site = {
   tagline: "Jewellery & Objects",
   email: "studio@mattborowczyk.com",
   instagram: "https://instagram.com/mattborowczyk",
-  based: "London",
+  based: "Warsaw",
   hours: "By appointment",
   footer: "Made to order",
 } as const;
 
 /**
- * Catalogue category filters (in display order). Only the fallback — the live
+ * The reset entry prepended to the portfolio taxonomy — shows every piece and
+ * carries no `filter` param.
+ */
+export const ALL_PIECES = "All pieces";
+
+/**
+ * Portfolio category filters (in display order). Only the fallback — the live
  * list comes from Site Settings in Sanity, which is where to edit it.
+ * `ALL_PIECES` is prepended automatically, so it is not listed there.
  */
 export const categories = [
-  "Shop all",
+  ALL_PIECES,
   "Rings",
   "Earrings",
+  "Grillz",
   "Objects",
 ] as const;
 
 /**
- * Portfolio category filters. A superset of the catalogue taxonomy — the
- * archive includes work that was never a shop line (grillz, one-off commissions).
- *
- * Unlike `categories` this is not CMS-backed: the same list drives the filter
- * rail *and* the `category` options on the Portfolio Piece schema, and a Sanity
- * option list cannot read from another document. Add a category here and it
- * appears in both places at once.
- */
-export const portfolioCategories = [
-  "All work",
-  "Rings",
-  "Earrings",
-  "Grillz",
-  "Objects", // the catch-all: hardware, tableware and one-offs live here for now
-] as const;
-
-/** The reset entry — shows everything, carries no `filter` param. */
-export const PORTFOLIO_ALL = portfolioCategories[0];
-
-/**
- * Right-rail page nav. "Catalogue" links back to the shop — with the filter
- * taxonomy now living on the left rail (and only on pages that have one), the
- * logo was the only way back to "/"; that's too easy to miss, so it gets its
- * own entry here too.
+ * Right-rail page nav. "Portfolio" links back to the run at "/" — with the
+ * filter taxonomy living on the left rail (and only on pages that have one),
+ * the logo was the only way home; that's too easy to miss, so it gets its own
+ * entry here too.
  *
  * The Studio page is hidden for now: its route lives in `app/(portfolio)/_studio`,
  * and Next.js excludes `_`-prefixed folders from routing, so /studio 404s. To
@@ -56,8 +44,7 @@ export const PORTFOLIO_ALL = portfolioCategories[0];
  * `{ href: "/studio", label: "Studio" },`
  */
 export const pageNav = [
-  { href: "/", label: "Catalogue" },
-  { href: "/portfolio", label: "Portfolio" },
+  { href: "/", label: "Portfolio" },
   { href: "/course", label: "Course" },
   { href: "/contact", label: "Contact" },
 ] as const;

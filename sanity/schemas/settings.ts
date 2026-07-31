@@ -49,11 +49,11 @@ export const settingsSchema = defineType({
     defineField({
       name: "categories",
       group: "site",
-      title: "Catalogue categories",
+      title: "Portfolio categories",
       type: "array",
       of: [{ type: "string" }],
       description:
-        'Filter taxonomy, in display order. "Shop all" is prepended automatically.',
+        'Filter taxonomy, in display order. "All pieces" is prepended automatically.',
     }),
 
     // ── Coming soon ────────────────────────────────────────────────────────
@@ -64,7 +64,7 @@ export const settingsSchema = defineType({
       group: "maintenance",
       initialValue: false,
       description:
-        "When on, every public page (shop, portfolio, course, contact, links) is replaced by the coming soon screen. The Studio at /admin stays open, and local development is never affected.",
+        "When on, every public page (portfolio, course, contact, links) is replaced by the coming soon screen. The Studio at /admin stays open, and local development is never affected.",
     }),
     defineField({
       name: "maintenanceHeadline",

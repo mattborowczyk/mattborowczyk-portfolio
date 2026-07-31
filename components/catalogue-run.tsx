@@ -7,7 +7,7 @@ import RenderPlaceholder from "@/components/render-placeholder";
 import Container from "@/components/ui/container";
 import Eyebrow from "@/components/ui/eyebrow";
 import { UnderlineAnchor } from "@/components/ui/underline-link";
-import { commissionMailto } from "@/lib/site";
+import { ALL_PIECES, commissionMailto } from "@/lib/site";
 import {
   type Product,
   altToneFor,
@@ -29,7 +29,7 @@ function PieceHeading({ name, price }: { name: string; price: string }) {
 }
 
 /**
- * The editorial catalogue "run": a centred vertical column of pieces that
+ * The editorial portfolio "run": a centred vertical column of pieces that
  * alternate left/right, cross-fade to a second tone on hover, and reveal a
  * straddling info card after a 500ms dwell. When a category filter is active,
  * non-matching pieces collapse to a row of clickable swatches.
@@ -47,7 +47,7 @@ export default function CatalogueRun({
   const [dwelled, setDwelled] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const isAll = filter === "Shop all";
+  const isAll = filter === ALL_PIECES;
   const matched = products.filter((p) => isAll || p.category === filter);
   const minimised = isAll
     ? []

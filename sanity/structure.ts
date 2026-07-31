@@ -43,15 +43,6 @@ export const structure: StructureResolver = (S) =>
         ),
 
       S.listItem()
-        .title("Portfolio Pieces")
-        .schemaType("piece")
-        .child(
-          S.documentTypeList("piece")
-            .title("Portfolio Pieces")
-            .defaultOrdering([{ field: "completed", direction: "desc" }]),
-        ),
-
-      S.listItem()
         .title("Courses")
         .schemaType("course")
         .child(

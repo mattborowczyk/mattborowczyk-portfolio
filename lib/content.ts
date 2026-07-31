@@ -75,7 +75,7 @@ export type LinkAction =
   | { type: "newsletter" };
 
 export const linkItems: { label: string; action: LinkAction }[] = [
-  { label: "Shop Collection", action: { type: "internal", href: "/" } },
+  { label: "Portfolio", action: { type: "internal", href: "/" } },
   { label: "Jewellery Design Course", action: { type: "internal", href: "/course" } },
   { label: "Digital Materials", action: { type: "external", href: "https://easytools.link/mattborowczyk-digital" } },
   { label: "Commission a Piece", action: { type: "internal", href: "/contact" } },

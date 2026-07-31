@@ -1,10 +1,8 @@
 import { cache } from "react";
 
 import { isSanityConfigured, sanityFetch } from "./client";
-import { urlFor } from "./image";
 import {
   allProductsQuery,
-  allPiecesQuery,
   allCoursesQuery,
   studioQuery,
   contactQuery,
@@ -12,8 +10,6 @@ import {
   newsletterQuery,
   settingsQuery,
   type ProductResult,
-  type PieceResult,
-  type PieceImageResult,
   type CourseResult,
   type StudioResult,
   type ContactResult,
@@ -23,11 +19,6 @@ import {
 } from "./queries";
 
 import { type Product, products as seedProducts } from "@/lib/products";
-import {
-  type Piece,
-  type PieceImage,
-  pieces as seedPieces,
-} from "@/lib/pieces";
 import { type Course, courses as seedCourses } from "@/lib/courses";
 import {
   studio as seedStudio,
@@ -38,7 +29,11 @@ import {
   type LinkAction,
   type SocialLinks,
 } from "@/lib/content";
-import { site as seedSite, categories as seedCategories } from "@/lib/site";
+import {
+  ALL_PIECES,
+  site as seedSite,
+  categories as seedCategories,
+} from "@/lib/site";
 
 /**
  * Cached, fallback-aware getters. Every getter:
@@ -87,50 +82,6 @@ export async function getProduct(
   if (index === -1) return null;
   return { product: products[index], index };
 }
-
-// ─── Portfolio pieces ────────────────────────────────────────────────────────
-
-/**
- * Resolve a piece's authored images to sized CDN URLs. Done here rather than in
- * the run so the client component only ever receives plain strings.
- */
-function pieceImages(images: PieceImageResult[] | undefined): PieceImage[] {
-  return (images ?? [])
-    .filter((image): image is Required<PieceImageResult> => Boolean(image?.asset))
-    .map((image) => ({
-      url: urlFor(image).width(900).height(1200).fit("crop").auto("format").url(),
-      alt: image.alt ?? "",
-    }));
-}
-
-/**
- * Portfolio pieces, newest first. There is no seed to fall back to (see
- * lib/pieces.ts) — an unconfigured or empty CMS yields an empty run, and the
- * page renders its empty state.
- */
-export const getPieces = cache(async (): Promise<Piece[]> =>
-  withFallback<Piece[]>(
-    async () => {
-      const docs = await sanityFetch<PieceResult[]>({
-        query: allPiecesQuery,
-        tags: ["piece"],
-      });
-      return (docs ?? []).map((doc) => ({
-        ref: doc.ref,
-        name: doc.name,
-        type: doc.type,
-        category: doc.category ?? "",
-        material: doc.material ?? "",
-        year: doc.completed?.slice(0, 4) ?? "",
-        status: doc.status ?? "Archive",
-        description: doc.description ?? "",
-        images: pieceImages(doc.images),
-        productRef: doc.productRef,
-      }));
-    },
-    seedPieces,
-  ),
-);
 
 // ─── Courses ─────────────────────────────────────────────────────────────────
 
@@ -335,9 +286,9 @@ export const getSettings = cache(async (): Promise<SiteSettings> =>
         email: doc.email ?? seedSite.email,
         instagram: doc.instagram ?? seedSite.instagram,
         footer: doc.footer ?? seedSite.footer,
-        // "Shop all" is implicit in the CMS — prepend it for the filter nav.
+        // The reset entry is implicit in the CMS — prepend it for the filter nav.
         categories: doc.categories?.length
-          ? ["Shop all", ...doc.categories]
+          ? [ALL_PIECES, ...doc.categories]
           : seedCategories,
         maintenance: {
           enabled: doc.maintenanceMode === true,
