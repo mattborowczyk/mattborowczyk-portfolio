@@ -33,6 +33,10 @@ export default function NewsletterCard({
   const [companyUrl, setCompanyUrl] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
+  // One ref for every pending timer — the auto-open delay and the post-success
+  // auto-close both live here, so opening the card always cancels whichever is
+  // outstanding. Previously the close timer was unowned: re-opening within 4s
+  // of a successful signup got shut again by the earlier timeout.
   const autoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -77,6 +81,15 @@ export default function NewsletterCard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, companyUrl }),
       });
+      // Throttling happens at the Netlify edge, so a 429 carries Netlify's own
+      // response rather than our JSON envelope — `data.error` would be empty
+      // and the generic fallback would invite a retry that's certain to fail.
+      if (res.status === 429) {
+        setStatus("error");
+        setMessage("Too many attempts — please try again in a few minutes.");
+        return;
+      }
+
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setStatus("success");
@@ -88,7 +101,8 @@ export default function NewsletterCard({
           /* ignore */
         }
         // Long enough to read a "check your inbox to confirm" instruction.
-        setTimeout(() => setShow(false), 4000);
+        if (autoTimer.current) clearTimeout(autoTimer.current);
+        autoTimer.current = setTimeout(() => setShow(false), 4000);
       } else {
         setStatus("error");
         setMessage(data.error ?? "Something went wrong. Please try again.");

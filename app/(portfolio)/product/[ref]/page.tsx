@@ -20,9 +20,20 @@ export async function generateMetadata({
   const result = await getProduct(ref);
   if (!result) return {};
   const { product } = result;
+  const title = `${product.name} — ${product.type}`;
+  // First still, if the piece has one — a video frame can't serve as an OG card.
+  const share = product.media.find((m) => m.kind === "image" && !m.animated);
+
   return {
-    title: `${product.name} — ${product.type}`,
+    title,
     description: product.description,
+    alternates: { canonical: `/product/${encodeURIComponent(product.ref)}` },
+    openGraph: {
+      title,
+      description: product.description,
+      type: "article",
+      images: share ? [{ url: share.url, alt: share.alt || product.name }] : undefined,
+    },
   };
 }
 

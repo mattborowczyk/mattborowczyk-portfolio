@@ -1,7 +1,11 @@
 import { groq } from "next-sanity";
+import type {
+  SanityImageCrop,
+  SanityImageHotspot,
+} from "@sanity/image-url/lib/types/types";
 
 import type { Product } from "@/lib/products";
-import type { Course } from "@/lib/courses";
+import type { CourseModule } from "@/lib/courses";
 
 /**
  * GROQ queries + result types for the Phase 3 content model. Each projection
@@ -12,32 +16,73 @@ import type { Course } from "@/lib/courses";
 
 // ─── Products ────────────────────────────────────────────────────────────────
 
+/**
+ * Media comes back with the asset dereferenced rather than transformed: the
+ * mime type decides whether fetch-data runs a still through the image pipeline
+ * or serves the file untouched (GIFs and video have to stay as uploaded).
+ */
 const productFields = groq`
   "ref": ref,
   name,
   type,
   category,
   material,
+  made,
   price,
   weight,
   dimensions,
-  finish,
+  details,
   leadTime,
-  description
+  description,
+  media[]{
+    "type": _type,
+    alt,
+    hotspot,
+    crop,
+    "assetId": asset->_id,
+    "url": asset->url,
+    "mime": asset->mimeType
+  }
 `;
 
+/**
+ * Newest made first; `_createdAt` only breaks ties on the same day.
+ *
+ * Filters on `made` as well as `ref` because both are non-optional in
+ * `ProductResult`, and `made` is the sort key for the entire run. The schema
+ * requires it, but schema validation only binds at edit time — a document
+ * written by the API, or predating the field, would otherwise arrive with
+ * `made: null` against a type promising `string`. Same rule as
+ * `allCoursesQuery`: the query only returns what the type actually claims.
+ */
 export const allProductsQuery = groq`
-  *[_type == "product" && defined(ref)] | order(order asc, _createdAt asc) {
+  *[_type == "product" && defined(ref) && defined(made)]
+    | order(made desc, _createdAt desc) {
     ${productFields}
   }
 `;
 
-export type ProductResult = Product;
+/** A raw media entry as returned by the projection above. */
+export type ProductMediaResult = {
+  type?: "image" | "file";
+  alt?: string;
+  /** Editor crop/focal point — only meaningful for stills. */
+  hotspot?: SanityImageHotspot;
+  crop?: SanityImageCrop;
+  assetId?: string;
+  url?: string;
+  mime?: string;
+};
+
+export type ProductResult = Omit<Product, "media"> & {
+  media?: ProductMediaResult[];
+};
 
 // ─── Courses ─────────────────────────────────────────────────────────────────
 
 export const allCoursesQuery = groq`
-  *[_type == "course" && defined(key)] | order(order asc, _createdAt asc) {
+  *[_type == "course" && defined(key) && defined(label) && defined(headline)]
+    | order(order asc, _createdAt asc) {
     key,
     label,
     headline,
@@ -52,7 +97,25 @@ export const allCoursesQuery = groq`
   }
 `;
 
-export type CourseResult = Course;
+/**
+ * The *raw* shape of the projection above — deliberately not `Course`. GROQ
+ * returns null for any attribute the document hasn't set, including arrays,
+ * so nothing beyond the fields the query filters on can be assumed present.
+ * `getCourses` normalises this into `Course`.
+ */
+export type CourseResult = {
+  key: string;
+  label: string;
+  headline: string;
+  intro?: string | null;
+  price?: string | null;
+  meta?: string | null;
+  level?: string | null;
+  length?: string | null;
+  checkoutUrl?: string | null;
+  modules?: (Partial<CourseModule> | null)[] | null;
+  includes?: (string | null)[] | null;
+};
 
 // ─── Studio (singleton) ──────────────────────────────────────────────────────
 

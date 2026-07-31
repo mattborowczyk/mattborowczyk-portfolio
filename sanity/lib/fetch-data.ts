@@ -1,6 +1,7 @@
 import { cache } from "react";
 
 import { isSanityConfigured, sanityFetch } from "./client";
+import { urlFor } from "./image";
 import {
   allProductsQuery,
   allCoursesQuery,
@@ -10,6 +11,7 @@ import {
   newsletterQuery,
   settingsQuery,
   type ProductResult,
+  type ProductMediaResult,
   type CourseResult,
   type StudioResult,
   type ContactResult,
@@ -18,8 +20,16 @@ import {
   type SettingsResult,
 } from "./queries";
 
-import { type Product, products as seedProducts } from "@/lib/products";
-import { type Course, courses as seedCourses } from "@/lib/courses";
+import {
+  type Product,
+  type ProductMedia,
+  products as seedProducts,
+} from "@/lib/products";
+import {
+  type Course,
+  type CourseModule,
+  courses as seedCourses,
+} from "@/lib/courses";
 import {
   studio as seedStudio,
   commission as seedCommission,
@@ -66,13 +76,79 @@ async function withFallback<T>(
 
 // ─── Products ────────────────────────────────────────────────────────────────
 
-export const getProducts = cache(async (): Promise<Product[]> =>
-  withFallback(
-    () => sanityFetch<ProductResult[]>({ query: allProductsQuery, tags: ["product"] }),
+/**
+ * Resolve a piece's media to ready-to-render URLs, so the client components
+ * only ever receive plain strings.
+ *
+ * Anything that moves — video, and GIFs — is served straight from the CDN:
+ * putting a GIF through the image pipeline flattens it to a single frame.
+ * Stills get resized and format-negotiated as usual.
+ */
+function productMedia(media: ProductMediaResult[] | undefined): ProductMedia[] {
+  return (media ?? [])
+    .filter((item) => item?.url)
+    .map((item) => {
+      const isVideo =
+        item.type === "file" || Boolean(item.mime?.startsWith("video/"));
+      const isAnimated = isVideo || item.mime === "image/gif";
+      return {
+        kind: isVideo ? ("video" as const) : ("image" as const),
+        animated: isAnimated,
+        url:
+          isAnimated || !item.assetId
+            ? item.url!
+            : // Passed as a full image object, not a bare asset id, so the
+              // hotspot/crop set in the Studio is honoured — with just the id
+              // the builder has nothing to crop against and the setting is
+              // silently ignored.
+              urlFor({
+                _type: "image",
+                asset: { _type: "reference", _ref: item.assetId },
+                hotspot: item.hotspot,
+                crop: item.crop,
+              })
+                .width(1600)
+                .auto("format")
+                .url(),
+        alt: item.alt ?? "",
+      };
+    });
+}
+
+/**
+ * Newest made first. ISO-8601 dates are zero-padded and fixed-width, so a plain
+ * lexicographic compare is exact — and unlike `localeCompare` it can't be
+ * reordered by the runtime's locale.
+ */
+const byMadeDesc = (a: Product, b: Product) => {
+  const x = a.made ?? "";
+  const y = b.made ?? "";
+  if (x === y) return 0;
+  return x < y ? 1 : -1;
+};
+
+/**
+ * The run is ordered by the date a piece was *made*. The GROQ query already
+ * sorts, but the sort is re-applied here so the local seed obeys the same rule
+ * and the ordering contract lives in one place rather than in array order.
+ */
+export const getProducts = cache(async (): Promise<Product[]> => {
+  const list = await withFallback(
+    async () => {
+      const docs = await sanityFetch<ProductResult[]>({
+        query: allProductsQuery,
+        tags: ["product"],
+      });
+      return (docs ?? []).map((doc) => ({
+        ...doc,
+        media: productMedia(doc.media),
+      }));
+    },
     seedProducts,
     (list) => list.length === 0,
-  ),
-);
+  );
+  return [...list].sort(byMadeDesc);
+});
 
 export async function getProduct(
   ref: string,
@@ -85,9 +161,44 @@ export async function getProduct(
 
 // ─── Courses ─────────────────────────────────────────────────────────────────
 
+/**
+ * Normalise one CMS course into the shape the page renders. Only key/label/
+ * headline are guaranteed (the query filters on them); every array is coerced
+ * so `.map()` is always safe, and modules missing their number or title are
+ * dropped rather than rendered as blanks.
+ */
+function normaliseCourse(doc: CourseResult): Course {
+  return {
+    key: doc.key,
+    label: doc.label,
+    headline: doc.headline,
+    intro: doc.intro ?? undefined,
+    price: doc.price ?? undefined,
+    meta: doc.meta ?? undefined,
+    level: doc.level ?? undefined,
+    length: doc.length ?? undefined,
+    checkoutUrl: doc.checkoutUrl ?? null,
+    modules: (doc.modules ?? [])
+      .filter((m): m is Partial<CourseModule> => Boolean(m?.no && m.title))
+      .map((m) => ({
+        no: m.no!,
+        title: m.title!,
+        body: m.body ?? undefined,
+        duration: m.duration ?? undefined,
+      })),
+    includes: (doc.includes ?? []).filter((i): i is string => Boolean(i)),
+  };
+}
+
 export const getCourses = cache(async (): Promise<Course[]> =>
   withFallback(
-    () => sanityFetch<CourseResult[]>({ query: allCoursesQuery, tags: ["course"] }),
+    async () => {
+      const docs = await sanityFetch<CourseResult[]>({
+        query: allCoursesQuery,
+        tags: ["course"],
+      });
+      return (docs ?? []).map(normaliseCourse);
+    },
     seedCourses,
     (list) => list.length === 0,
   ),

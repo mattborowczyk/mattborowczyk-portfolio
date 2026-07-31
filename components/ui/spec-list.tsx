@@ -36,8 +36,10 @@ export default function SpecList({
         className,
       )}
     >
-      {items.map((item) => (
-        <div key={item.label} className="contents">
+      {/* Keyed by position, not label: labels come from the CMS and repeat
+          freely (two "Email" rows in Contact details is perfectly reasonable). */}
+      {items.map((item, i) => (
+        <div key={i} className="contents">
           <dt className="text-label-light">{item.label}</dt>
           <dd>
             {item.href ? (

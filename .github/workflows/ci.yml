@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A new push to the same branch supersedes the run in flight.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# This workflow only reads the repo — it never pushes, comments or releases.
+# Declared explicitly so it doesn't silently inherit a broader repository
+# default if that is ever widened.
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint, typecheck, build
+    runs-on: ubuntu-latest
+
+    # Actions are pinned to commit SHAs, not tags: a tag is mutable, so
+    # `@v4` would silently execute new code if the tag were ever repointed.
+    # The comment on each line records the release the SHA belongs to.
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # Don't leave the job's GITHUB_TOKEN in .git/config where any later
+          # step (or a compromised dependency) could read and reuse it.
+          persist-credentials: false
+
+      # Version comes from the `packageManager` field in package.json.
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm exec tsc --noEmit
+
+      # No secrets needed: with no Sanity env the site builds from the local
+      # seed in lib/*, which is the same fallback that keeps production up if
+      # the CMS is unreachable. Worth having CI exercise that path.
+      - name: Build
+        run: pnpm build
