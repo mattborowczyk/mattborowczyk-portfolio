@@ -29,6 +29,11 @@ export default passThrough;
 
 export const config: Config = {
   path: "/api/newsletter",
+  // Scoped to the one method the route actually implements. Without this the
+  // function matches every method on the path, so a stray GET, HEAD or OPTIONS
+  // spends the same three-request bucket a real signup needs — and the visitor
+  // who then submits the form gets a 429 for someone else's traffic.
+  method: "POST",
   rateLimit: {
     action: "rate_limit",
     // A real signup is one request; three leaves room for a typo and a retry.

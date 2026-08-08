@@ -78,7 +78,10 @@ async function withFallback<T>(
 
 /**
  * Resolve a piece's media to ready-to-render URLs, so the client components
- * only ever receive plain strings.
+ * never handle a Sanity asset reference. They get a `url` plus the `kind` and
+ * `animated` flags they branch on — those flags are load-bearing, not
+ * decoration: without them a GIF goes through the optimiser and comes out a
+ * single frame.
  *
  * Anything that moves — video, and GIFs — is served straight from the CDN:
  * putting a GIF through the image pipeline flattens it to a single frame.
@@ -344,11 +347,23 @@ const seedNewsletter: NewsletterContent = {
 
 export const getNewsletter = cache(async (): Promise<NewsletterContent> =>
   withFallback<NewsletterContent>(
-    () =>
-      sanityFetch<NewsletterResult>({
+    async () => {
+      const doc = await sanityFetch<NewsletterResult>({
         query: newsletterQuery,
         tags: ["newsletter"],
-      }),
+      });
+      if (!doc) return null;
+      // Coalesce per field, like every other singleton: an editor who has
+      // written the headline but not the microcopy keeps their headline and
+      // gets the seed's microcopy, rather than a card with a blank line under
+      // it. `microcopy` is optional in the schema so that is ordinary use;
+      // `headline` is required, but only at edit time — same reason the
+      // queries `defined()`-filter rather than trusting the schema.
+      return {
+        headline: doc.headline ?? seedNewsletter.headline,
+        microcopy: doc.microcopy ?? seedNewsletter.microcopy,
+      };
+    },
     seedNewsletter,
   ),
 );

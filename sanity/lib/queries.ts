@@ -196,9 +196,15 @@ export const newsletterQuery = groq`
   }
 `;
 
+/**
+ * Nullable for the same reason `CourseResult` is: GROQ returns null for any
+ * attribute the document hasn't set, so a half-filled singleton would otherwise
+ * arrive as `null` against a type promising a string. `getNewsletter`
+ * coalesces per field.
+ */
 export type NewsletterResult = {
-  headline: string;
-  microcopy: string;
+  headline?: string | null;
+  microcopy?: string | null;
 };
 
 // ─── Settings (singleton) ────────────────────────────────────────────────────

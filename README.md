@@ -149,8 +149,11 @@ them: the run shows a piece's first item with the second as a hover overlay, and
 the product page switches between all of them.
 
 How a file is served depends on its real mime type, resolved once in
-`productMedia()` (`sanity/lib/fetch-data.ts`) so components only ever receive
-plain URL strings:
+`productMedia()` (`sanity/lib/fetch-data.ts`). Components never see a Sanity
+asset reference — they receive `ProductMedia` objects carrying a ready-to-render
+`url` plus the `kind` (`image` / `video`) and `animated` flags they render from.
+Those two flags are the whole point: drop them and the optimiser flattens GIFs
+and video stops being a `<video>`.
 
 - **stills** go through the Sanity image pipeline (`urlFor`, width 1600,
   `auto("format")`), passed as a full image object so the hotspot/crop set in the
@@ -171,6 +174,12 @@ breaks same-day ties) and `getProducts` re-applies the same comparison so the
 local seed obeys the identical rule. The compare is a plain lexicographic one on
 ISO-8601 strings, deliberately not `localeCompare`, which the runtime's locale
 could reorder.
+
+Because `made` is the sort key it is also a filter: `allProductsQuery` drops any
+product without one. The Studio requires the field, so this only bites documents
+written through the API or predating it — but note the failure is silent, the
+piece simply never appears and its URL 404s. To check a dataset:
+`*[_type == "product" && !defined(made)]{_id, ref}`.
 
 ## How fetching + fallback works
 

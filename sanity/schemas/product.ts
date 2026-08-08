@@ -68,9 +68,29 @@ export const productSchema = defineType({
       name: "category",
       title: "Category",
       type: "string",
-      // Sourced from lib/site.ts so the rail and this list can never drift.
+      // The radio list is the static fallback from lib/site.ts: `options.list`
+      // is baked in when the schema is defined, so it cannot read the live
+      // taxonomy out of Site Settings. The rule below closes the gap from the
+      // other side — it queries the settings document and rejects a category
+      // the rail no longer offers, so renaming or dropping one surfaces as a
+      // validation error on the affected pieces instead of quietly stranding
+      // them behind a filter that no longer exists. Adding a category still
+      // means adding it in both places; see the note in README.
       options: { list: [...filterCategories], layout: "radio" },
-      validation: (Rule) => Rule.required(),
+      validation: (Rule) =>
+        Rule.required().custom(async (category, context) => {
+          if (!category) return true;
+          const live = await context
+            .getClient({ apiVersion: "2024-01-01" })
+            .fetch<string[] | null>('*[_id == "settings"][0].categories');
+          // No settings document, or no taxonomy set on it, means the site is
+          // running on the seed list — which is exactly what the radio offers.
+          if (!live?.length) return true;
+          return (
+            live.includes(category) ||
+            `"${category}" is not in the portfolio categories set in Site Settings (${live.join(", ")}), so no filter will show this piece`
+          );
+        }),
     }),
     defineField({
       name: "material",
