@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 
 import RenderPlaceholder from "@/components/render-placeholder";
@@ -10,21 +11,126 @@ import { UnderlineAnchor } from "@/components/ui/underline-link";
 import { ALL_PIECES, commissionMailto } from "@/lib/site";
 import {
   type Product,
+  type ProductMedia,
   altToneFor,
   materialLabel,
   toneFor,
 } from "@/lib/products";
 import { cn } from "@/lib/utils";
 
-/** Name + price row shared by the hover card and the mobile caption. */
-function PieceHeading({ name, price }: { name: string; price: string }) {
+/**
+ * Name + price row shared by the hover card and the mobile caption. A piece
+ * with no price just shows its name — no empty column, no placeholder dash.
+ */
+function PieceHeading({ name, price }: { name: string; price?: string }) {
   return (
     <div className="flex items-baseline justify-between gap-3xs">
       <span className="font-sans text-base font-bold leading-none text-ink">
         {name}
       </span>
-      <span className="font-mono text-sm text-ink">{price}</span>
+      {price && <span className="font-mono text-sm text-ink">{price}</span>}
     </div>
+  );
+}
+
+/** Overlay cross-fade length — matches `--duration-base` in globals.css. */
+const OVERLAY_FADE_MS = 350;
+
+/**
+ * The hover overlay when the second media item is a clip.
+ *
+ * It is mounted only around a hover: a permanently-mounted overlay video would
+ * download and decode continuously behind an opacity of 0, for every piece in
+ * the run at once. Mounting alone would pop, though — an element that appears
+ * already at its final opacity has nothing to transition from, and one removed
+ * on mouse-leave never gets to fade out. So it mounts at 0 and is raised a
+ * frame later, and the unmount waits out the fade. The result matches the
+ * cross-fade an image overlay gets for free.
+ */
+function OverlayVideo({ item, show }: { item: ProductMedia; show: boolean }) {
+  const [mounted, setMounted] = useState(false);
+  const [faded, setFaded] = useState(false);
+
+  useEffect(() => {
+    if (show) {
+      setMounted(true);
+      return;
+    }
+    if (!mounted) return;
+    const timer = setTimeout(() => setMounted(false), OVERLAY_FADE_MS);
+    return () => clearTimeout(timer);
+  }, [show, mounted]);
+
+  useEffect(() => {
+    if (!mounted || !show) {
+      setFaded(false);
+      return;
+    }
+    // One frame after mount, so there is a rendered opacity of 0 to animate
+    // from rather than a first paint that is already opaque.
+    const frame = requestAnimationFrame(() => setFaded(true));
+    return () => cancelAnimationFrame(frame);
+  }, [mounted, show]);
+
+  if (!mounted) return null;
+
+  return (
+    <video
+      src={item.url}
+      autoPlay
+      loop
+      muted
+      playsInline
+      preload="metadata"
+      aria-hidden
+      className="absolute inset-0 h-full w-full object-cover transition-opacity duration-base"
+      style={{ opacity: faded ? 1 : 0 }}
+    />
+  );
+}
+
+/** One media slot in the run — a still, an animated GIF, or a looping clip. */
+function PieceMedia({
+  item,
+  name,
+  overlay = false,
+  show = true,
+}: {
+  item: ProductMedia;
+  name: string;
+  /** Overlay layers sit above the base still and are decorative. */
+  overlay?: boolean;
+  show?: boolean;
+}) {
+  const style = overlay ? { opacity: show ? 1 : 0 } : undefined;
+  if (item.kind === "video") {
+    if (overlay) return <OverlayVideo item={item} show={show} />;
+    return (
+      <video
+        src={item.url}
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="metadata"
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+    );
+  }
+  return (
+    <Image
+      src={item.url}
+      alt={overlay ? "" : item.alt || name}
+      fill
+      sizes="(min-width: 60rem) 22.5rem, 82vw"
+      aria-hidden={overlay || undefined}
+      className="object-cover transition-opacity duration-base"
+      // Animated sources are served untransformed; the optimiser would flatten
+      // a GIF to a single frame. `animated` comes from the asset's real mime
+      // type (see sanity/lib/fetch-data.ts) rather than sniffing the URL.
+      unoptimized={item.animated}
+      style={style}
+    />
   );
 }
 
@@ -33,6 +139,10 @@ function PieceHeading({ name, price }: { name: string; price: string }) {
  * alternate left/right, cross-fade to a second tone on hover, and reveal a
  * straddling info card after a 500ms dwell. When a category filter is active,
  * non-matching pieces collapse to a row of clickable swatches.
+ *
+ * `filter` is a prop rather than something read from the URL here, so this
+ * component never touches `useSearchParams` and can therefore be rendered on
+ * the server — see `catalogue-run-filtered.tsx` for why that matters.
  */
 export default function CatalogueRun({
   products,
@@ -53,6 +163,21 @@ export default function CatalogueRun({
     ? []
     : products.filter((p) => p.category !== filter);
 
+  // Tone assignment keys off a piece's position in the full run, so it stays
+  // stable as filters change. Precomputed — this used to be an indexOf() per
+  // row inside the render loop.
+  const toneIndex = useMemo(
+    () => new Map(products.map((p, i) => [p.ref, i])),
+    [products],
+  );
+
+  // A pending dwell timer would otherwise fire into an unmounted tree.
+  useEffect(() => {
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, []);
+
   function enter(ref: string) {
     setHovered(ref);
     if (timer.current) clearTimeout(timer.current);
@@ -72,7 +197,7 @@ export default function CatalogueRun({
 
       <Container className="flex flex-col gap-run pb-3xl">
         {matched.map((p, i) => {
-          const gi = products.indexOf(p);
+          const gi = toneIndex.get(p.ref) ?? 0;
           // Alternate the run left/right of centre (desktop only). The info
           // card then goes to the opposite side, where the space is.
           const tx = i % 2 === 0 ? "-3.25rem" : "3.25rem";
@@ -97,19 +222,35 @@ export default function CatalogueRun({
                   className="relative block aspect-[3/4] overflow-hidden"
                   style={{ backgroundColor: toneFor(gi) }}
                 >
-                  <RenderPlaceholder
-                    tone={toneFor(gi)}
-                    code={p.ref}
-                    className="absolute inset-0"
-                  />
-                  <div
-                    className="render-stripe-45 absolute inset-0 transition-opacity duration-base"
-                    style={{
-                      backgroundColor: altToneFor(gi),
-                      opacity: isHover ? 1 : 0,
-                    }}
-                    aria-hidden="true"
-                  />
+                  {p.media.length > 0 ? (
+                    <PieceMedia item={p.media[0]} name={p.name} />
+                  ) : (
+                    <RenderPlaceholder
+                      tone={toneFor(gi)}
+                      code={p.ref}
+                      className="absolute inset-0"
+                    />
+                  )}
+
+                  {/* Hover: the second media item if there is one, else the
+                      tonal stripe the run has always used. */}
+                  {p.media.length > 1 ? (
+                    <PieceMedia
+                      item={p.media[1]}
+                      name={p.name}
+                      overlay
+                      show={isHover}
+                    />
+                  ) : (
+                    <div
+                      className="render-stripe-45 absolute inset-0 transition-opacity duration-base"
+                      style={{
+                        backgroundColor: altToneFor(gi),
+                        opacity: isHover ? 1 : 0,
+                      }}
+                      aria-hidden="true"
+                    />
+                  )}
                 </Link>
 
                 {/* Info card (desktop, after 500ms dwell) — parked in the
@@ -159,7 +300,7 @@ export default function CatalogueRun({
                 href="/"
                 aria-label={`Show all — ${p.ref}`}
                 className="flex h-[3.375rem] w-[3.375rem] items-center justify-center transition-transform duration-fast hover:scale-[1.08]"
-                style={{ backgroundColor: toneFor(products.indexOf(p)) }}
+                style={{ backgroundColor: toneFor(toneIndex.get(p.ref) ?? 0) }}
               >
                 <span className="font-mono text-3xs text-ink-faint">
                   {p.ref}

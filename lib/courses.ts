@@ -8,19 +8,27 @@
 export interface CourseModule {
   no: string;
   title: string;
-  body: string;
-  duration: string;
+  /** Optional in the CMS — the row renders without it. */
+  body?: string;
+  duration?: string;
 }
 
+/**
+ * Only `key`, `label` and `headline` are required in the CMS (see
+ * sanity/schemas/course.ts), so everything else is optional here and every
+ * consumer must treat it as absent-able. `modules` and `includes` are
+ * normalised to arrays by `getCourses` — GROQ returns null for an unset array,
+ * and a bare `.map()` on that is a crash.
+ */
 export interface Course {
   key: string;
   label: string;
   headline: string;
-  intro: string;
-  price: string;
-  meta: string;
-  level: string;
-  length: string;
+  intro?: string;
+  price?: string;
+  meta?: string;
+  level?: string;
+  length?: string;
   checkoutUrl: string | null;
   modules: CourseModule[];
   includes: string[];

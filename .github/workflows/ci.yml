@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A new push to the same branch supersedes the run in flight.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# This workflow only reads the repo — it never pushes, comments or releases.
+# Declared explicitly so it doesn't silently inherit a broader repository
+# default if that is ever widened.
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint, typecheck, build
+    runs-on: ubuntu-latest
+
+    # Actions are pinned to commit SHAs, not tags: a tag is mutable, so
+    # `@v7` would silently execute new code if the tag were ever repointed.
+    # The comment on each line records the release the SHA belongs to.
+    #
+    # All three run on the node24 action runtime. The node20 runtime these were
+    # previously on is deprecated and warns on every run until it is removed in
+    # late 2026, so the pins are kept on releases that have moved off it.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Don't leave the job's GITHUB_TOKEN in .git/config where any later
+          # step (or a compromised dependency) could read and reuse it.
+          persist-credentials: false
+
+      # Version comes from the `packageManager` field in package.json.
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm exec tsc --noEmit
+
+      # No secrets needed: with no Sanity env the site builds from the local
+      # seed in lib/*, which is the same fallback that keeps production up if
+      # the CMS is unreachable. Worth having CI exercise that path.
+      - name: Build
+        run: pnpm build

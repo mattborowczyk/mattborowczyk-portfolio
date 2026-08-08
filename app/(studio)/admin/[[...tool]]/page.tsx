@@ -7,7 +7,18 @@
  */
 import { Studio } from "./Studio";
 
-export { metadata, viewport } from "next-sanity/studio";
+import type { Metadata, Viewport } from "next";
+
+export const metadata: Metadata = {
+  title: "Sanity Studio",
+  robots: "noindex",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
 
 export const dynamic = "force-static";
 

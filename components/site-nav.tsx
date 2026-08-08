@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
 import Eyebrow from "@/components/ui/eyebrow";
-import { pageNav } from "@/lib/site";
+import { ALL_PIECES, pageNav, resolveFilter } from "@/lib/site";
 import type { SiteSettings } from "@/sanity/lib/fetch-data";
 import { cn } from "@/lib/utils";
 
@@ -19,14 +19,16 @@ function filterEntries(
   basePath: string,
   activeParam: string | null,
 ): NavEntry[] {
-  const reset = categories[0];
+  // Resolved through the same helper the run uses, so an unrecognised filter
+  // highlights "All pieces" here exactly as it shows every piece there.
+  const active = resolveFilter(categories, activeParam);
   return categories.map((cat) => ({
     label: cat,
     href:
-      cat === reset
+      cat === ALL_PIECES
         ? basePath
         : `${basePath}?filter=${encodeURIComponent(cat)}`,
-    active: (activeParam ?? reset) === cat,
+    active: active === cat,
   }));
 }
 

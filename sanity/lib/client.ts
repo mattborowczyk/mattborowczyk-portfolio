@@ -1,17 +1,26 @@
 import { createClient, type QueryParams } from "next-sanity";
 
-const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID;
-const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET;
+const envProjectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID;
+const envDataset = process.env.NEXT_PUBLIC_SANITY_DATASET;
 
 /**
  * Whether Sanity is wired up. When false the site renders entirely from the
  * local seed (lib/*), so it keeps working with no project / no .env.local.
  */
-export const isSanityConfigured = Boolean(projectId && dataset);
+export const isSanityConfigured = Boolean(envProjectId && envDataset);
+
+/**
+ * Resolved connection details, placeholders included. Exported so the Studio
+ * config uses exactly the same values as the site rather than asserting the
+ * env vars are set — the whole codebase is built to run without them, and a
+ * non-null assertion there just turned a missing var into an opaque crash.
+ */
+export const projectId = envProjectId ?? "placeholder";
+export const dataset = envDataset ?? "production";
 
 export const client = createClient({
-  projectId: projectId ?? "placeholder",
-  dataset: dataset ?? "production",
+  projectId,
+  dataset,
   apiVersion: "2024-01-01",
   useCdn: true, // Set to false for authenticated/draft requests
 });

@@ -1,9 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { NewsletterError, subscribeToNewsletter } from "@/lib/mailerlite";
 
+/**
+ * Throttling is not done here. It lives at the edge, in
+ * netlify/edge-functions/newsletter-guard.ts, which Netlify enforces before
+ * this handler is ever invoked — so an over-limit request costs no compute and
+ * never reaches this code. The 429 a client sees is Netlify's, not ours.
+ *
+ * What remains here is application-level: the honeypot and format validation.
+ */
 export async function POST(req: NextRequest) {
   try {
-    const { email, companyUrl } = (await req.json()) ?? {};
+    // A malformed body is the caller's mistake, not ours — `req.json()` rejects
+    // (it never resolves to null), so it needs its own catch to stay a 400
+    // instead of falling through to the generic 500 below.
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        { error: "A valid email address is required." },
+        { status: 400 }
+      );
+    }
+
+    const { email, companyUrl } = (body ?? {}) as {
+      email?: unknown;
+      companyUrl?: unknown;
+    };
 
     // Honeypot: hidden field that only a bot would fill in. Report success so
     // the bot doesn't retry, but don't touch MailerLite. Deliberately NOT named

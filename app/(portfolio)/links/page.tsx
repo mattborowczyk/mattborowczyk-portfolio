@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import LinksHub from "@/components/links-hub";
-import { getLinks } from "@/sanity/lib/fetch-data";
+import { getLinks, getSettings } from "@/sanity/lib/fetch-data";
 
 export const revalidate = 60; // ISR
 
@@ -12,6 +12,6 @@ export const metadata: Metadata = {
 };
 
 export default async function LinksPage() {
-  const links = await getLinks();
-  return <LinksHub links={links} />;
+  const [links, settings] = await Promise.all([getLinks(), getSettings()]);
+  return <LinksHub links={links} settings={settings} />;
 }

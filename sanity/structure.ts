@@ -34,12 +34,12 @@ export const structure: StructureResolver = (S) =>
     .title("Content")
     .items([
       S.listItem()
-        .title("Products")
+        .title("Pieces")
         .schemaType("product")
         .child(
           S.documentTypeList("product")
-            .title("Products")
-            .defaultOrdering([{ field: "order", direction: "asc" }]),
+            .title("Pieces")
+            .defaultOrdering([{ field: "made", direction: "desc" }]),
         ),
 
       S.listItem()

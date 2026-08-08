@@ -45,17 +45,22 @@ function CourseBody({ course }: { course: Course }) {
         <h1 className="max-w-[15ch] font-serif text-heading-xl font-medium leading-none tracking-tight text-ink">
           {course.headline}
         </h1>
-        <p className="max-w-[52ch] text-2xl leading-loose text-body-soft">
-          {course.intro}
-        </p>
+        {course.intro && (
+          <p className="max-w-[52ch] text-2xl leading-loose text-body-soft">
+            {course.intro}
+          </p>
+        )}
         <div className="flex flex-wrap items-center gap-5">
           <EnrolButton
-            label={`Enrol — ${course.price} →`}
+            // An unpriced course still gets a working button — never "£undefined".
+            label={course.price ? `Enrol — ${course.price} →` : "Enrol →"}
             href={course.checkoutUrl}
           />
-          <span className="font-mono text-sm tracking-wide-sm text-label">
-            {course.meta}
-          </span>
+          {course.meta && (
+            <span className="font-mono text-sm tracking-wide-sm text-label">
+              {course.meta}
+            </span>
+          )}
         </div>
       </Container>
 
@@ -66,74 +71,90 @@ function CourseBody({ course }: { course: Course }) {
         </div>
       </Container>
 
-      {/* Curriculum */}
-      <Container size="lg" className="flex flex-col gap-md">
-        <Eyebrow>Curriculum</Eyebrow>
-        <div className="flex flex-col border-b border-hairline">
-          {course.modules.map((m) => (
-            <div
-              key={m.no}
-              className="flex flex-wrap items-baseline gap-x-stack-sm gap-y-3 border-t border-hairline py-6"
-            >
-              <div className="w-11 flex-none font-serif text-display-lg leading-none text-gold opacity-50">
-                {m.no}
-              </div>
-              <div className="flex min-w-0 flex-[1_1_16rem] flex-col gap-3xs">
-                <div className="font-sans text-lg font-bold text-ink">
-                  {m.title}
+      {/* Curriculum — the whole section goes when a course has no modules yet */}
+      {course.modules.length > 0 && (
+        <Container size="lg" className="flex flex-col gap-md">
+          <Eyebrow>Curriculum</Eyebrow>
+          <div className="flex flex-col border-b border-hairline">
+            {course.modules.map((m, i) => (
+              <div
+                key={i}
+                className="flex flex-wrap items-baseline gap-x-stack-sm gap-y-3 border-t border-hairline py-6"
+              >
+                <div className="w-11 flex-none font-serif text-display-lg leading-none text-gold opacity-50">
+                  {m.no}
                 </div>
-                <div className="max-w-[52ch] text-base leading-relaxed text-body-muted">
-                  {m.body}
+                <div className="flex min-w-0 flex-[1_1_16rem] flex-col gap-3xs">
+                  <div className="font-sans text-lg font-bold text-ink">
+                    {m.title}
+                  </div>
+                  {m.body && (
+                    <div className="max-w-[52ch] text-base leading-relaxed text-body-muted">
+                      {m.body}
+                    </div>
+                  )}
                 </div>
+                {m.duration && (
+                  <div className="flex-none font-mono text-sm tracking-wide-sm text-label-light">
+                    {m.duration}
+                  </div>
+                )}
               </div>
-              <div className="flex-none font-mono text-sm tracking-wide-sm text-label-light">
-                {m.duration}
-              </div>
-            </div>
-          ))}
-        </div>
-      </Container>
+            ))}
+          </div>
+        </Container>
+      )}
 
       {/* Included + enrol band */}
       <Container size="lg" className="pb-3xl">
         <div className="flex flex-col items-start gap-stack nav:flex-row">
           {/* What's included */}
-          <div className="flex w-full min-w-0 flex-[1.2] flex-col gap-md nav:w-auto">
-            <Eyebrow>What’s included</Eyebrow>
-            <div className="flex flex-col gap-3">
-              {course.includes.map((inc) => (
-                <div
-                  key={inc}
-                  className="flex items-baseline gap-3 text-lg leading-normal text-body"
-                >
-                  <span className="flex-none font-mono text-sm text-gold">→</span>
-                  <span>{inc}</span>
-                </div>
-              ))}
+          {course.includes.length > 0 && (
+            <div className="flex w-full min-w-0 flex-[1.2] flex-col gap-md nav:w-auto">
+              <Eyebrow>What’s included</Eyebrow>
+              <div className="flex flex-col gap-3">
+                {course.includes.map((inc, i) => (
+                  <div
+                    key={i}
+                    className="flex items-baseline gap-3 text-lg leading-normal text-body"
+                  >
+                    <span className="flex-none font-mono text-sm text-gold">→</span>
+                    <span>{inc}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Format + enrol card */}
           <div className="w-full min-w-0 flex-1 nav:w-auto">
             <div className="flex flex-col gap-md bg-band p-lg">
               <SpecList
+                // Level and length are optional in the CMS — drop the row
+                // rather than render a label with nothing beside it.
                 items={[
                   { label: "Format", value: courseFormat.format },
-                  { label: "Level", value: course.level },
-                  { label: "Length", value: course.length },
+                  ...(course.level
+                    ? [{ label: "Level", value: course.level }]
+                    : []),
+                  ...(course.length
+                    ? [{ label: "Length", value: course.length }]
+                    : []),
                   { label: "Access", value: courseFormat.access },
                   { label: "Files", value: courseFormat.files },
                 ]}
               />
 
-              <div className="flex items-baseline gap-3.5 border-t border-hairline-md pt-md">
-                <span className="font-serif text-display-2xl leading-none text-ink">
-                  {course.price}
-                </span>
-                <span className="font-mono text-xs uppercase tracking-wide-sm text-label-light">
-                  One-time
-                </span>
-              </div>
+              {course.price && (
+                <div className="flex items-baseline gap-3.5 border-t border-hairline-md pt-md">
+                  <span className="font-serif text-display-2xl leading-none text-ink">
+                    {course.price}
+                  </span>
+                  <span className="font-mono text-xs uppercase tracking-wide-sm text-label-light">
+                    One-time
+                  </span>
+                </div>
+              )}
 
               <div className="flex flex-col gap-3">
                 <EnrolButton label="Enrol now →" href={course.checkoutUrl} block />

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { ComponentProps } from "react";
 
 import { cn } from "@/lib/utils";
@@ -16,11 +15,4 @@ export function UnderlineAnchor({
   ...props
 }: ComponentProps<"a">) {
   return <a className={cn(underlineLinkClass, className)} {...props} />;
-}
-
-export function UnderlineLink({
-  className,
-  ...props
-}: ComponentProps<typeof Link>) {
-  return <Link className={cn(underlineLinkClass, className)} {...props} />;
 }

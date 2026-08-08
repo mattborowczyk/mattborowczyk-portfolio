@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, IBM_Plex_Mono } from "next/font/google";
+
+import { BASE_URL } from "@/lib/site";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -17,7 +19,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://mattborowczyk.com"),
+  metadataBase: new URL(BASE_URL),
   title: {
     default: "mattborowczyk — Jewellery & Objects",
     template: "%s — mattborowczyk",

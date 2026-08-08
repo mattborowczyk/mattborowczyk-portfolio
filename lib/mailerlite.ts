@@ -20,10 +20,6 @@ export class NewsletterError extends Error {
   }
 }
 
-export function isNewsletterConfigured(): boolean {
-  return !!process.env.MAILERLITE_API_KEY;
-}
-
 export async function subscribeToNewsletter(email: string): Promise<void> {
   // Read at call time so the value tracks the runtime environment, not build time.
   const apiKey = process.env.MAILERLITE_API_KEY;
@@ -48,15 +44,29 @@ export async function subscribeToNewsletter(email: string): Promise<void> {
   // ON in Account settings → Subscribe settings — see the note in README.
   body.status = "unconfirmed";
 
-  const res = await fetch(`${BASE_URL}/subscribers`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-      Accept: "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+  // Bounded so a hung MailerLite connection can't hold the route handler open
+  // for the platform's full function timeout.
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}/subscribers`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        Accept: "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (error) {
+    throw new NewsletterError(
+      `MailerLite request failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+      504,
+      "Something went wrong. Please try again."
+    );
+  }
 
   if (res.ok) return;
 

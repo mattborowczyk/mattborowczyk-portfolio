@@ -3,6 +3,13 @@
  * social links and nav taxonomy so they never drift across pages.
  * These become CMS-backed globals in Phase 3.
  */
+/**
+ * Canonical origin, no trailing slash. Single source for the sitemap, robots
+ * and `metadataBase` — these must agree on the host or search engines get
+ * contradictory canonical signals.
+ */
+export const BASE_URL = "https://mattborowczyk.com";
+
 export const site = {
   name: "mattborowczyk",
   tagline: "Jewellery & Objects",
@@ -48,6 +55,22 @@ export const pageNav = [
   { href: "/course", label: "Course" },
   { href: "/contact", label: "Contact" },
 ] as const;
+
+/**
+ * Resolve a raw `?filter=` value against the live taxonomy. Anything unknown
+ * (stale bookmark, hand-edited URL, a category since renamed in the CMS)
+ * collapses to `ALL_PIECES`.
+ *
+ * Shared so the run and the rail can't disagree: they previously derived this
+ * separately, and an unrecognised filter showed every piece while leaving no
+ * rail entry highlighted.
+ */
+export function resolveFilter(
+  categories: readonly string[],
+  raw: string | null | undefined,
+): string {
+  return raw && categories.includes(raw) ? raw : ALL_PIECES;
+}
 
 /**
  * Build a prefilled commission mailto for a given piece (or a general one).
