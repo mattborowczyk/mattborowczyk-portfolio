@@ -1,5 +1,6 @@
 import { defineField, defineType } from "sanity";
 
+import { materials } from "@/lib/products";
 import { ALL_PIECES, categories } from "@/lib/site";
 
 /** "All pieces" is the rail's reset entry, not something a piece can be. */
@@ -76,7 +77,9 @@ export const productSchema = defineType({
       title: "Material",
       type: "string",
       options: {
-        list: ["Silver", "Gold"],
+        // Sourced from lib/products.ts so the seed's `Material` union and this
+        // list can never drift.
+        list: [...materials],
         layout: "radio",
       },
       validation: (Rule) => Rule.required(),

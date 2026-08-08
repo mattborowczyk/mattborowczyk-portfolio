@@ -3,13 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 
 import RenderPlaceholder from "@/components/render-placeholder";
 import Container from "@/components/ui/container";
 import Eyebrow from "@/components/ui/eyebrow";
 import { UnderlineAnchor } from "@/components/ui/underline-link";
-import { ALL_PIECES, commissionMailto, resolveFilter } from "@/lib/site";
+import { ALL_PIECES, commissionMailto } from "@/lib/site";
 import {
   type Product,
   type ProductMedia,
@@ -34,6 +33,62 @@ function PieceHeading({ name, price }: { name: string; price?: string }) {
   );
 }
 
+/** Overlay cross-fade length — matches `--duration-base` in globals.css. */
+const OVERLAY_FADE_MS = 350;
+
+/**
+ * The hover overlay when the second media item is a clip.
+ *
+ * It is mounted only around a hover: a permanently-mounted overlay video would
+ * download and decode continuously behind an opacity of 0, for every piece in
+ * the run at once. Mounting alone would pop, though — an element that appears
+ * already at its final opacity has nothing to transition from, and one removed
+ * on mouse-leave never gets to fade out. So it mounts at 0 and is raised a
+ * frame later, and the unmount waits out the fade. The result matches the
+ * cross-fade an image overlay gets for free.
+ */
+function OverlayVideo({ item, show }: { item: ProductMedia; show: boolean }) {
+  const [mounted, setMounted] = useState(false);
+  const [faded, setFaded] = useState(false);
+
+  useEffect(() => {
+    if (show) {
+      setMounted(true);
+      return;
+    }
+    if (!mounted) return;
+    const timer = setTimeout(() => setMounted(false), OVERLAY_FADE_MS);
+    return () => clearTimeout(timer);
+  }, [show, mounted]);
+
+  useEffect(() => {
+    if (!mounted || !show) {
+      setFaded(false);
+      return;
+    }
+    // One frame after mount, so there is a rendered opacity of 0 to animate
+    // from rather than a first paint that is already opaque.
+    const frame = requestAnimationFrame(() => setFaded(true));
+    return () => cancelAnimationFrame(frame);
+  }, [mounted, show]);
+
+  if (!mounted) return null;
+
+  return (
+    <video
+      src={item.url}
+      autoPlay
+      loop
+      muted
+      playsInline
+      preload="metadata"
+      aria-hidden
+      className="absolute inset-0 h-full w-full object-cover transition-opacity duration-base"
+      style={{ opacity: faded ? 1 : 0 }}
+    />
+  );
+}
+
 /** One media slot in the run — a still, an animated GIF, or a looping clip. */
 function PieceMedia({
   item,
@@ -49,10 +104,7 @@ function PieceMedia({
 }) {
   const style = overlay ? { opacity: show ? 1 : 0 } : undefined;
   if (item.kind === "video") {
-    // Only mounted while hovered: a permanently-mounted overlay video would
-    // download and decode continuously behind an opacity of 0, for every piece
-    // in the run at once.
-    if (overlay && !show) return null;
+    if (overlay) return <OverlayVideo item={item} show={show} />;
     return (
       <video
         src={item.url}
@@ -61,9 +113,7 @@ function PieceMedia({
         muted
         playsInline
         preload="metadata"
-        aria-hidden={overlay || undefined}
-        className="absolute inset-0 h-full w-full object-cover transition-opacity duration-base"
-        style={style}
+        className="absolute inset-0 h-full w-full object-cover"
       />
     );
   }
@@ -89,22 +139,23 @@ function PieceMedia({
  * alternate left/right, cross-fade to a second tone on hover, and reveal a
  * straddling info card after a 500ms dwell. When a category filter is active,
  * non-matching pieces collapse to a row of clickable swatches.
+ *
+ * `filter` is a prop rather than something read from the URL here, so this
+ * component never touches `useSearchParams` and can therefore be rendered on
+ * the server — see `catalogue-run-filtered.tsx` for why that matters.
  */
 export default function CatalogueRun({
   products,
-  categories,
+  filter,
   email,
 }: {
   products: Product[];
-  categories: readonly string[];
+  filter: string;
   email: string;
 }) {
   const [hovered, setHovered] = useState<string | null>(null);
   const [dwelled, setDwelled] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Read here rather than on the server, so the page stays statically rendered.
-  const filter = resolveFilter(categories, useSearchParams().get("filter"));
 
   const isAll = filter === ALL_PIECES;
   const matched = products.filter((p) => isAll || p.category === filter);

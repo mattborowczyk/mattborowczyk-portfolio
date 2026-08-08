@@ -6,7 +6,26 @@
 
 /** One of `categories` in lib/site.ts — CMS-driven, so not a closed union. */
 export type Category = string;
-export type Material = "Silver" | "Gold";
+
+/**
+ * The materials a piece can be cast or printed in, in display order. Unlike
+ * `categories` this list is not CMS-editable, so it lives here and the Studio's
+ * radio list is spread from it (sanity/schemas/product.ts) — one list, so the
+ * schema and the seed can never drift. "Other" is the catch-all for one-offs
+ * that don't warrant their own entry.
+ */
+export const materials = [
+  "Silver",
+  "Gold",
+  "Stainless Steel",
+  "Aluminium",
+  "Ceramics",
+  "Wax",
+  "Polymer",
+  "Other",
+] as const;
+
+export type Material = (typeof materials)[number];
 
 /**
  * A still, an animation or a clip attached to a piece. Animated formats (GIF,
@@ -64,10 +83,13 @@ export const tones = ["#cdd3c7", "#c4cdc2", "#bcc5bb", "#d4d5ca", "#c8cfc1", "#c
 export const altTones = ["#bfc7bb", "#cdd2c6", "#b4bdb2", "#cacbbf", "#bdc4b6", "#d0d3c8", "#c2c8bb", "#bbc2b4"];
 
 /**
- * Human-facing material label (matches the prototype spec sheet). The Studio
- * offers a fixed list, but that's only enforced at edit time — a value stored
- * before the list changed is passed through as-is rather than silently
- * relabelled as gold.
+ * Human-facing material label (matches the prototype spec sheet). Only the two
+ * precious metals name their alloy; the rest of `materials` read correctly as
+ * they stand and so are absent here.
+ *
+ * The Studio offers a fixed list, but that's only enforced at edit time — a
+ * value stored before the list changed is passed through as-is rather than
+ * silently relabelled as gold.
  */
 const materialLabels: Record<string, string> = {
   Silver: "Silver 925",
