@@ -80,9 +80,25 @@ export const productSchema = defineType({
       validation: (Rule) =>
         Rule.required().custom(async (category, context) => {
           if (!category) return true;
-          const live = await context
-            .getClient({ apiVersion: "2024-01-01" })
-            .fetch<string[] | null>('*[_id == "settings"][0].categories');
+
+          let live: string[] | null = null;
+          try {
+            live = await context
+              .getClient({ apiVersion: "2024-01-01" })
+              .fetch<string[] | null>('*[_id == "settings"][0].categories');
+          } catch (error) {
+            // This rule is a cross-check, not a gate: if the settings document
+            // can't be read the honest answer is "unknown", and blocking every
+            // product edit until Sanity is reachable again would be a worse
+            // failure than letting a category through unverified. Same instinct
+            // as `withFallback` on the site side — a CMS hiccup degrades, it
+            // doesn't stop the work. (The `ref` uniqueness rule above is
+            // deliberately not written this way: failing open there would admit
+            // a duplicate slug, which is the thing it exists to prevent.)
+            console.warn("[sanity] category validation skipped:", error);
+            return true;
+          }
+
           // No settings document, or no taxonomy set on it, means the site is
           // running on the seed list — which is exactly what the radio offers.
           if (!live?.length) return true;

@@ -152,8 +152,9 @@ How a file is served depends on its real mime type, resolved once in
 `productMedia()` (`sanity/lib/fetch-data.ts`). Components never see a Sanity
 asset reference — they receive `ProductMedia` objects carrying a ready-to-render
 `url` plus the `kind` (`image` / `video`) and `animated` flags they render from.
-Those two flags are the whole point: drop them and the optimiser flattens GIFs
-and video stops being a `<video>`.
+Those two flags are load-bearing. If `animated` is lost, the optimiser flattens
+a GIF to a single frame; if `kind` is lost, a clip renders as an `<img>` instead
+of a `<video>`.
 
 - **stills** go through the Sanity image pipeline (`urlFor`, width 1600,
   `auto("format")`), passed as a full image object so the hotspot/crop set in the
