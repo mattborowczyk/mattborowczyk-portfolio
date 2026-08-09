@@ -1,6 +1,8 @@
 import { cache } from "react";
+import type { QueryParams } from "next-sanity";
 
 import { isSanityConfigured, sanityFetch } from "./client";
+import { isDraftEnabled } from "./draft";
 import { urlFor } from "./image";
 import {
   allProductsQuery,
@@ -55,6 +57,19 @@ import {
  * Each getter is wrapped in React `cache()` so repeated calls within one
  * request (e.g. the footer + a page both reading settings) hit the network once.
  */
+
+/**
+ * `sanityFetch` with the draft decision already applied, so "is this request
+ * previewing drafts?" is answered in one place rather than in each of the seven
+ * getters below — and so a getter added later can't quietly miss it.
+ */
+async function cmsFetch<T>(options: {
+  query: string;
+  params?: QueryParams;
+  tags?: string[];
+}): Promise<T> {
+  return sanityFetch<T>({ ...options, draft: await isDraftEnabled() });
+}
 
 async function withFallback<T>(
   fetcher: () => Promise<T | null | undefined>,
@@ -138,7 +153,7 @@ const byMadeDesc = (a: Product, b: Product) => {
 export const getProducts = cache(async (): Promise<Product[]> => {
   const list = await withFallback(
     async () => {
-      const docs = await sanityFetch<ProductResult[]>({
+      const docs = await cmsFetch<ProductResult[]>({
         query: allProductsQuery,
         tags: ["product"],
       });
@@ -193,14 +208,30 @@ function normaliseCourse(doc: CourseResult): Course {
   };
 }
 
+/**
+ * Apply the per-course `enabled` switch, and fail open: the page keeps at
+ * least one course rather than rendering an empty tab strip. Turning every
+ * course off is not how the offering is hidden — that is `coursePageEnabled`
+ * in settings, which 404s the route and pulls the nav entry. Same rule as
+ * category validation: an editor mistake degrades to the old view, never to a
+ * broken one.
+ *
+ * `!== false` rather than truthiness, so documents written before the field
+ * existed (and API-written ones that omit it) stay visible.
+ */
+function enabledCourses(docs: CourseResult[]): CourseResult[] {
+  const enabled = docs.filter((doc) => doc.enabled !== false);
+  return enabled.length > 0 ? enabled : docs.slice(0, 1);
+}
+
 export const getCourses = cache(async (): Promise<Course[]> =>
   withFallback(
     async () => {
-      const docs = await sanityFetch<CourseResult[]>({
+      const docs = await cmsFetch<CourseResult[]>({
         query: allCoursesQuery,
         tags: ["course"],
       });
-      return (docs ?? []).map(normaliseCourse);
+      return enabledCourses(docs ?? []).map(normaliseCourse);
     },
     seedCourses,
     (list) => list.length === 0,
@@ -217,7 +248,7 @@ export type StudioContent = {
 
 export const getStudio = cache(async (): Promise<StudioContent> =>
   withFallback<StudioContent>(
-    () => sanityFetch<StudioResult>({ query: studioQuery, tags: ["studio"] }),
+    () => cmsFetch<StudioResult>({ query: studioQuery, tags: ["studio"] }),
     seedStudio,
     // A half-filled singleton (e.g. no paragraphs yet) would crash StudioPage's
     // .map() calls — treat it as empty and use the seed instead.
@@ -259,7 +290,7 @@ const seedContact: ContactContent = {
 export const getContact = cache(async (): Promise<ContactContent> =>
   withFallback<ContactContent>(
     async () => {
-      const doc = await sanityFetch<ContactResult>({
+      const doc = await cmsFetch<ContactResult>({
         query: contactQuery,
         tags: ["contact"],
       });
@@ -304,7 +335,7 @@ const seedLinks: LinksContent = {
 export const getLinks = cache(async (): Promise<LinksContent> =>
   withFallback<LinksContent>(
     async () => {
-      const doc = await sanityFetch<LinksResult>({
+      const doc = await cmsFetch<LinksResult>({
         query: linksQuery,
         tags: ["links"],
       });
@@ -348,7 +379,7 @@ const seedNewsletter: NewsletterContent = {
 export const getNewsletter = cache(async (): Promise<NewsletterContent> =>
   withFallback<NewsletterContent>(
     async () => {
-      const doc = await sanityFetch<NewsletterResult>({
+      const doc = await cmsFetch<NewsletterResult>({
         query: newsletterQuery,
         tags: ["newsletter"],
       });
@@ -377,6 +408,12 @@ export type SiteSettings = {
   instagram: string;
   footer: string;
   categories: readonly string[];
+  /**
+   * Whether /course is live. Defaults to on when the CMS has never been asked,
+   * so an older settings document (or no Sanity at all) keeps the page rather
+   * than silently retiring it.
+   */
+  courseEnabled: boolean;
   /** Faithful mirror of the CMS switch — the dev bypass lives at the gate. */
   maintenance: { enabled: boolean; headline: string; message: string };
 };
@@ -395,13 +432,14 @@ const seedSettings: SiteSettings = {
   instagram: seedSite.instagram,
   footer: seedSite.footer,
   categories: seedCategories,
+  courseEnabled: true,
   maintenance: seedMaintenance,
 };
 
 export const getSettings = cache(async (): Promise<SiteSettings> =>
   withFallback<SiteSettings>(
     async () => {
-      const doc = await sanityFetch<SettingsResult>({
+      const doc = await cmsFetch<SettingsResult>({
         query: settingsQuery,
         tags: ["settings"],
       });
@@ -416,6 +454,10 @@ export const getSettings = cache(async (): Promise<SiteSettings> =>
         categories: doc.categories?.length
           ? [ALL_PIECES, ...doc.categories]
           : seedCategories,
+        // Only an explicit `false` retires the page. `?? true` rather than
+        // `=== true` because unset must mean "on" — the opposite default from
+        // `maintenanceMode`, where unset must mean "site is up".
+        courseEnabled: doc.coursePageEnabled ?? true,
         maintenance: {
           enabled: doc.maintenanceMode === true,
           headline: doc.maintenanceHeadline ?? seedMaintenance.headline,

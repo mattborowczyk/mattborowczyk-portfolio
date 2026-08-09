@@ -55,7 +55,7 @@ full, self-contained context (files, patterns, acceptance criteria).
 - [ ] ⚙️ `not-found.tsx`, `error.tsx`, `loading.tsx` route files *(#18)*
 - [ ] ⚙️ JSON-LD structured data (`Product` / `CreativeWork`) on product pages *(#20)*
 - [ ] ⚙️ Analytics (Vercel Analytics — lightest fit; confirm in #21) *(#21)*
-- [ ] ⚙️ Draft/preview mode with `SANITY_API_TOKEN`, **or** remove the unused token *(#22)*
+- [x] ⚙️ Draft/preview mode with `SANITY_API_TOKEN`, **or** remove the unused token *(#22)*
 - [ ] ⚙️ `/api/revalidate` webhook → `revalidateTag` on Sanity publish *(#23)*
 - [ ] ⚙️ Rate-limit `/api/newsletter` + add a honeypot field *(#25)*
 - [ ] ⚙️ Accessibility pass (skip-link, `aria-current`, focus states, reduced-motion) *(#28)*

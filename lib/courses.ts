@@ -3,6 +3,12 @@
  * layout behind a toggle. `checkoutUrl` is intentionally null for now: the
  * Enrol buttons render but stay disabled until real checkout links exist.
  * Becomes CMS-backed in Phase 3.
+ *
+ * There is no `enabled` field here, deliberately: the seed is the baseline the
+ * site falls back to, so every seeded course is visible by definition. Hiding a
+ * course is a CMS decision, applied in `getCourses` (see the `enabled` field on
+ * `CourseResult`) — the same split as `order`, which sorts in GROQ and never
+ * reaches this type.
  */
 
 export interface CourseModule {

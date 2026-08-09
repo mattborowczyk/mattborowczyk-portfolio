@@ -1,6 +1,10 @@
+import { VisualEditing } from "next-sanity";
+
 import AppShell from "@/components/app-shell";
 import ComingSoon from "@/components/coming-soon";
+import DraftBanner from "@/components/draft-banner";
 import NewsletterCard from "@/components/newsletter-card";
+import { isDraftEnabled } from "@/sanity/lib/draft";
 import { getNewsletter, getSettings } from "@/sanity/lib/fetch-data";
 
 /**
@@ -18,9 +22,14 @@ import { getNewsletter, getSettings } from "@/sanity/lib/fetch-data";
  * The Studio at /admin sits in its own route group and is unaffected, and the
  * curtain is skipped in development so the site stays workable locally while
  * production shows the notice.
+ *
+ * Draft mode lifts it for the same reason development does: previewing the site
+ * behind the curtain is the whole point of the preview, and getting there
+ * already required a token-validated secret from the Studio. Turning the site
+ * off must not also turn off the ability to work on it.
  */
-function isCurtainDown(enabled: boolean) {
-  return enabled && process.env.NODE_ENV !== "development";
+function isCurtainDown(enabled: boolean, draft: boolean) {
+  return enabled && !draft && process.env.NODE_ENV !== "development";
 }
 
 export default async function PortfolioLayout({
@@ -28,9 +37,9 @@ export default async function PortfolioLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const settings = await getSettings();
+  const [settings, draft] = await Promise.all([getSettings(), isDraftEnabled()]);
 
-  if (isCurtainDown(settings.maintenance.enabled)) {
+  if (isCurtainDown(settings.maintenance.enabled, draft)) {
     return <ComingSoon settings={settings} />;
   }
 
@@ -43,6 +52,21 @@ export default async function PortfolioLayout({
         headline={newsletter.headline}
         microcopy={newsletter.microcopy}
       />
+      {/*
+        Only mounted in draft mode, so the published site ships none of it.
+        `VisualEditing` is what connects the page back to the Presentation tool:
+        it syncs navigation between the iframe and the Studio and re-renders the
+        route when a document changes, which is what makes this a live preview
+        rather than a page you have to keep reloading. Click-to-edit overlays
+        need stega, which the preview client deliberately leaves off — see
+        `previewClient` in sanity/lib/client.ts.
+      */}
+      {draft && (
+        <>
+          <DraftBanner />
+          <VisualEditing />
+        </>
+      )}
     </>
   );
 }

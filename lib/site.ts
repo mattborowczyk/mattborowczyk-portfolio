@@ -40,7 +40,7 @@ export const categories = [
 ] as const;
 
 /**
- * Right-rail page nav. "Portfolio" links back to the run at "/" — with the
+ * Right-rail page nav. "Archive" links back to the run at "/" — with the
  * filter taxonomy living on the left rail (and only on pages that have one),
  * the logo was the only way home; that's too easy to miss, so it gets its own
  * entry here too.
@@ -51,7 +51,7 @@ export const categories = [
  * `{ href: "/studio", label: "Studio" },`
  */
 export const pageNav = [
-  { href: "/", label: "Portfolio" },
+  { href: "/", label: "Archive" },
   { href: "/course", label: "Course" },
   { href: "/contact", label: "Contact" },
 ] as const;

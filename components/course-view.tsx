@@ -181,17 +181,21 @@ export default function CourseView({ courses }: { courses: Course[] }) {
     >
       <Container size="lg" className="flex flex-col gap-4 pb-lg">
         <Eyebrow>Course — Online, self-paced</Eyebrow>
-        <TabsList className="self-start border border-hairline-md">
-          {courses.map((c) => (
-            <TabsTrigger
-              key={c.key}
-              value={c.key}
-              className="px-md py-3 text-ink data-[state=active]:bg-ink data-[state=active]:text-bone"
-            >
-              {c.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        {/* A toggle with one option is furniture, not a choice — when the CMS
+            leaves a single course enabled the page just showcases it. */}
+        {courses.length > 1 && (
+          <TabsList className="self-start border border-hairline-md">
+            {courses.map((c) => (
+              <TabsTrigger
+                key={c.key}
+                value={c.key}
+                className="px-md py-3 text-ink data-[state=active]:bg-ink data-[state=active]:text-bone"
+              >
+                {c.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        )}
       </Container>
 
       {courses.map((c) => (

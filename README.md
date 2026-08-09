@@ -51,7 +51,7 @@ CMS is unreachable. There is no test suite.
 | --- | --- | --- |
 | `NEXT_PUBLIC_SANITY_PROJECT_ID` | for CMS | Sanity project. Without it (or the dataset) the site renders entirely from the local seed. |
 | `NEXT_PUBLIC_SANITY_DATASET` | for CMS | Sanity dataset (e.g. `production`). |
-| `SANITY_API_TOKEN` | no | **Currently unused.** Reserved for draft/preview mode (Next.js draft mode + a `useCdn:false` preview client). Safe to leave unset. |
+| `SANITY_API_TOKEN` | for preview | Viewer token. Enables [draft preview](#draft-preview); without it the site only ever serves published content. |
 | `MAILERLITE_API_KEY` | for newsletter | MailerLite API key. |
 | `MAILERLITE_GROUP_ID` | no | Group/segment subscribers are added to. |
 
@@ -104,14 +104,20 @@ type.
 - **`product`** — `ref` (unique, uppercase, = URL slug), `name`, `type`,
   `made` (date — **the sort key**), `category`, `material` (Silver / Gold /
   Stainless Steel / Aluminium / Ceramics / Wax / Polymer / Other),
-  `description`, `media[]`, and the optional `details`, `weight`, `dimensions`,
-  `leadTime`, `price` (string incl. currency). Every optional field is hidden
+  `description`, `media[]`, and the optional `format` (Digital / Physical),
+  `details`, `weight`, `dimensions`, `leadTime`, `price` (string incl.
+  currency). Every optional field is hidden
   when blank, so a piece can go up before its price or measurements are settled.
   Mirrors `Product` in `lib/products.ts`.
-  - `material` options are spread from the `materials` list in
-    `lib/products.ts`, so the Studio's radio list and the seed's `Material`
-    union can't drift — that list is not CMS-editable, which is what makes a
-    single source possible.
+  - `material` and `format` options are spread from the `materials` / `formats`
+    lists in `lib/products.ts`, so the Studio's radio lists and the seed's
+    `Material` / `Format` unions can't drift — those lists are not CMS-editable,
+    which is what makes a single source possible.
+  - `format` is stored but **nothing reads it yet**; it exists so the archive can
+    be split into digital / physical / all later. It is deliberately optional:
+    every piece predating the field would otherwise open in a validation error
+    state, so "unset" is a real value and a future filter must treat it as
+    showing only under "all", never as a third bucket.
   - `category` options are **not** in the same position. The Studio's radio list
     comes from the `categories` fallback in `lib/site.ts`, while the rail and
     `resolveFilter` use the live `settings.categories` from Sanity, so the two
@@ -123,8 +129,14 @@ type.
     dataset (ignoring the document's own draft/published pair).
 - **`course`** — `key`, `label`, `headline`, `intro`, `price`, `meta`, `level`,
   `length`, `checkoutUrl`, `heroImage`, `modules[]` `{ no, title, body, duration }`,
-  `includes[]`, `order` (lower = left-most toggle). Only `key` / `label` /
+  `includes[]`, `order` (lower = left-most toggle), `enabled`. Only `key` / `label` /
   `headline` are required. Mirrors `Course` in `lib/courses.ts`.
+  - `enabled` off drops the course from the page — its toggle tab goes and the
+    rest take over; with one course left the tab strip goes too. `getCourses`
+    applies it and **fails open**: disabling every course keeps the first rather
+    than serving an empty page, because hiding the offering is
+    `coursePageEnabled`'s job below. Like `order`, it stays out of the `Course`
+    type — it is a publishing control, not content.
 
 **Singletons**
 
@@ -138,8 +150,10 @@ type.
 - **`newsletter`** — `headline`, `microcopy`.
 - **`settings`** — `name`, `tagline`, `email`, `instagram`, `footer`,
   `categories[]` (the filter taxonomy; the `"All pieces"` reset entry is
-  prepended automatically, so it isn't listed there), plus the coming-soon
-  switch: `maintenanceMode`, `maintenanceHeadline`, `maintenanceMessage`.
+  prepended automatically, so it isn't listed there), `coursePageEnabled`
+  (unset counts as on; off both hides the nav entry and makes `/course` a real
+  404, and drops it from the sitemap), plus the coming-soon switch:
+  `maintenanceMode`, `maintenanceHeadline`, `maintenanceMessage`.
   Mirrors `lib/site.ts`.
 
 ### Media
@@ -210,13 +224,49 @@ request (the footer, the nav, `generateMetadata` and the page all reading
 `sanityFetch` tags every query by document type so a future `/api/revalidate`
 webhook can invalidate on publish.
 
+## Draft preview
+
+Editors can see unpublished edits on the real site before publishing them. It is
+off by default and per-browser: the published site is unchanged, still static,
+still on ISR.
+
+Open **Presentation** in the Studio at `/admin`. It shows the site in a frame
+beside the document being edited, and edits appear without a reload. Behind that:
+
+1. Presentation writes a one-time `sanity.previewUrlSecret` document and sends
+   the browser to `/api/draft/enable?sanity-preview-secret=…`.
+2. That route validates the secret against the dataset — which is what
+   `SANITY_API_TOKEN` is for — and turns on Next.js draft mode (a cookie).
+3. `isDraftEnabled()` (`sanity/lib/draft.ts`) is then true for the rest of that
+   browser's requests, so every getter reads through `previewClient` instead:
+   `perspective: "drafts"`, no CDN, no caching.
+4. A black **Draft preview** bar sits in the corner of every page. Its *Exit*
+   link hits `/api/draft/disable`, which clears the cookie and puts the browser
+   back on the published, cached site.
+
+Two deliberate limits:
+
+- **Preview is not visual editing.** Click-to-edit overlays need stega, which
+  works by hiding invisible marker characters inside every string Sanity
+  returns. This site compares CMS strings for equality in several places — the
+  category filter, link `actionType`, pricing tab keys — and those comparisons
+  would quietly stop matching in preview only. `previewClient` sets
+  `stega: false`; enabling it means auditing every such comparison first.
+- **No token, no preview.** `/api/draft/enable` answers 401 and the site stays
+  published. That is the same posture as the rest of the CMS wiring: an
+  unconfigured deployment degrades to something that still works.
+
+Coming-soon mode is lifted in draft preview, for the same reason it is lifted in
+development — previewing the site behind the curtain is the point, and getting
+there already required a token-validated secret from the Studio.
+
 ## Coming-soon mode
 
 `settings.maintenanceMode` puts a curtain over the whole public site without a
 deploy. It's gated in `app/(portfolio)/layout.tsx` — the highest point that
-already has `settings` in hand — and skipped in development, so the site stays
-workable locally while production shows the notice. `/admin` sits in its own
-route group and is unaffected.
+already has `settings` in hand — and skipped in development and in
+[draft preview](#draft-preview), so the site stays workable while production
+shows the notice. `/admin` sits in its own route group and is unaffected.
 
 Note what this does and doesn't guarantee: Next renders a layout and its page in
 parallel, so the page underneath still executes its queries; returning the notice

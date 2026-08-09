@@ -26,6 +26,7 @@ const productFields = groq`
   name,
   type,
   category,
+  format,
   material,
   made,
   price,
@@ -93,7 +94,8 @@ export const allCoursesQuery = groq`
     length,
     "checkoutUrl": checkoutUrl,
     modules[]{ no, title, body, duration },
-    includes
+    includes,
+    enabled
   }
 `;
 
@@ -115,6 +117,13 @@ export type CourseResult = {
   checkoutUrl?: string | null;
   modules?: (Partial<CourseModule> | null)[] | null;
   includes?: (string | null)[] | null;
+  /**
+   * Editor visibility switch, applied by `getCourses` rather than by the query:
+   * filtering here would make "every course disabled" look like "no courses",
+   * and trip the seed fallback. Absent on documents predating the field, so
+   * only an explicit `false` hides a course.
+   */
+  enabled?: boolean | null;
 };
 
 // ─── Studio (singleton) ──────────────────────────────────────────────────────
@@ -217,6 +226,7 @@ export const settingsQuery = groq`
     instagram,
     footer,
     categories,
+    coursePageEnabled,
     maintenanceMode,
     maintenanceHeadline,
     maintenanceMessage
@@ -230,6 +240,7 @@ export type SettingsResult = {
   instagram?: string;
   footer: string;
   categories?: string[];
+  coursePageEnabled?: boolean;
   maintenanceMode?: boolean;
   maintenanceHeadline?: string;
   maintenanceMessage?: string;

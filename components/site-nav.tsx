@@ -43,7 +43,7 @@ function useFilterRail(settings: SiteSettings): FilterRail | null {
 
   if (pathname === "/") {
     return {
-      label: "Portfolio",
+      label: "Archive",
       items: filterEntries(settings.categories, "/", activeParam),
     };
   }
@@ -108,12 +108,17 @@ export default function SiteNav({ settings }: { settings: SiteSettings }) {
   const pathname = usePathname();
   const filters = useFilterRail(settings);
 
-  const pageItems = pageNav.map((p) => ({
-    label: p.label,
-    href: p.href,
-    // "/" would startsWith-match every route, so Catalogue needs an exact check.
-    active: p.href === "/" ? pathname === "/" : pathname.startsWith(p.href),
-  }));
+  const pageItems = pageNav
+    // The course can be retired from the CMS; drop its entry rather than
+    // linking to a page that now 404s. The route itself enforces this too —
+    // hiding the link is not the gate.
+    .filter((p) => p.href !== "/course" || settings.courseEnabled)
+    .map((p) => ({
+      label: p.label,
+      href: p.href,
+      // "/" would startsWith-match every route, so Archive needs an exact check.
+      active: p.href === "/" ? pathname === "/" : pathname.startsWith(p.href),
+    }));
 
   return (
     <>
