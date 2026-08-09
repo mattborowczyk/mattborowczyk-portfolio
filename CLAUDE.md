@@ -49,6 +49,28 @@ normalisation/fallback (`sanity/lib/fetch-data.ts`) → seed type (`lib/*`) → 
 GROQ queries deliberately `defined()`-filter on fields the result type declares non-optional (e.g. `ref`,
 `made`), because schema validation only binds at edit time — API-written or older documents can violate it.
 
+### Draft preview
+
+Same invariant, one level up: `SANITY_API_TOKEN` is optional, and without it every request stays on the
+published path. Entry point is the Presentation tool in the Studio, not a hand-rolled `?secret=` link.
+
+- `sanity/lib/draft.ts` — `isDraftEnabled()`. Lives apart from `client.ts` because it imports `next/headers`,
+  and `client.ts` is pulled into the Studio's *client* bundle by `sanity.config.ts`. Its `try/catch` is
+  load-bearing: `generateStaticParams` runs with no request store and `draftMode()` throws there. During an
+  ordinary prerender it returns `false` without opting the route into dynamic rendering — **check the build
+  output still shows `/` and `/product/[ref]` as static if you touch this.**
+- `sanity/lib/client.ts` — `previewClient` (`perspective: "drafts"`, `useCdn: false`, `stega: false`) and
+  `sanityFetch({ draft })`, which drops ISR + tags for draft reads. `sanityFetch` takes the *decision*, never
+  reads it.
+- `sanity/lib/fetch-data.ts` — `cmsFetch` applies that decision once for all getters. New getters go through
+  it, not `sanityFetch`.
+- `app/api/draft/enable` (`defineEnableDraftMode`, guarded so a tokenless deploy 401s instead of throwing a
+  bare 500) and `app/api/draft/disable` (path-validated redirect). `components/draft-banner.tsx` + Next's
+  `VisualEditing` mount only in draft mode; the coming-soon curtain is lifted there.
+
+Stega stays **off**. It hides invisible characters inside every string, and the site compares CMS strings for
+equality (category filter, link `actionType`, pricing tab keys) — turning it on means auditing those first.
+
 ### Ordering and media
 
 - The catalogue run is ordered by `made` (the ISO date the piece was finished), **newest first** — not

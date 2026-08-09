@@ -2,9 +2,9 @@ import { defineField, defineType } from "sanity";
 
 /**
  * A self-paced course (Jewellery, Grillz — extensible). Mirrors the `Course`
- * interface in lib/courses.ts. The Course page renders all courses behind a
- * segmented toggle, ordered by `order`. `checkoutUrl` may be blank — the Enrol
- * button then renders disabled ("opening soon").
+ * interface in lib/courses.ts. The Course page renders every *enabled* course
+ * behind a segmented toggle, ordered by `order`. `checkoutUrl` may be blank —
+ * the Enrol button then renders disabled ("opening soon").
  */
 export const courseSchema = defineType({
   name: "course",
@@ -24,6 +24,14 @@ export const courseSchema = defineType({
       type: "string",
       description: "Toggle tab text — e.g. Jewellery",
       validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: "enabled",
+      title: "Show this course",
+      type: "boolean",
+      initialValue: true,
+      description:
+        "Turn off to drop this course from the Course page — its toggle tab disappears and the remaining courses take over. The page always shows at least one course, so switching every course off falls back to the first rather than leaving an empty page. To take the whole Course page offline, use Show the Course page in Site Settings.",
     }),
     defineField({
       name: "headline",
@@ -125,6 +133,12 @@ export const courseSchema = defineType({
     },
   ],
   preview: {
-    select: { title: "label", subtitle: "headline" },
+    // Flag hidden courses in the list — without it a switched-off course is
+    // indistinguishable from a live one until you open it.
+    select: { title: "label", subtitle: "headline", enabled: "enabled" },
+    prepare: ({ title, subtitle, enabled }) => ({
+      title: enabled === false ? `${title} — hidden` : title,
+      subtitle,
+    }),
   },
 });

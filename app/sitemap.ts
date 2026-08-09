@@ -19,7 +19,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     { url: BASE_URL, changeFrequency: "weekly", priority: 1 },
-    { url: `${BASE_URL}/course`, changeFrequency: "monthly", priority: 0.8 },
+    // Dropped while the course is off — the route 404s, and advertising a URL
+    // that returns Not Found is exactly what a sitemap must not do.
+    ...(settings.courseEnabled
+      ? [
+          {
+            url: `${BASE_URL}/course`,
+            changeFrequency: "monthly" as const,
+            priority: 0.8,
+          },
+        ]
+      : []),
     { url: `${BASE_URL}/contact`, changeFrequency: "monthly", priority: 0.8 },
     ...products.map((p) => ({
       url: `${BASE_URL}/product/${encodeURIComponent(p.ref)}`,

@@ -1,6 +1,6 @@
 import { defineField, defineType } from "sanity";
 
-import { materials } from "@/lib/products";
+import { formats, materials } from "@/lib/products";
 import { ALL_PIECES, categories } from "@/lib/site";
 
 /** "All pieces" is the rail's reset entry, not something a piece can be. */
@@ -107,6 +107,22 @@ export const productSchema = defineType({
             `"${category}" is not in the portfolio categories set in Site Settings (${live.join(", ")}), so no filter will show this piece`
           );
         }),
+    }),
+    defineField({
+      name: "format",
+      title: "Digital or physical",
+      type: "string",
+      description:
+        "Whether the piece is a delivered file or a made object. Nothing filters on this yet — it is here so the archive can be split into digital / physical / all later. Leave blank if it doesn't apply.",
+      options: {
+        // Spread from lib/products.ts, same as `material`, so the seed union
+        // and this list can't drift.
+        list: [...formats],
+        layout: "radio",
+      },
+      // Deliberately not required: every piece already in the dataset predates
+      // this field, and requiring it would put all of them into a validation
+      // error state on first open for a field nothing reads yet.
     }),
     defineField({
       name: "material",

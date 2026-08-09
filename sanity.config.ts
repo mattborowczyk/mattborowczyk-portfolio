@@ -1,5 +1,6 @@
 import { defineConfig } from "sanity";
 import { structureTool } from "sanity/structure";
+import { presentationTool } from "sanity/presentation";
 import { visionTool } from "@sanity/vision";
 import { schemaTypes } from "@/sanity/schemas";
 import { structure, singletonTypes } from "@/sanity/structure";
@@ -27,6 +28,20 @@ export default defineConfig({
 
   plugins: [
     structureTool({ structure }),
+    // Draft preview: the site in an iframe beside the editor, rendering
+    // unpublished edits. `initial` is left unset so it defaults to
+    // `location.origin` — the Studio is embedded at /admin, so the site being
+    // previewed is always the same deployment, and there is no preview URL to
+    // keep in sync between local, deploy previews and production.
+    //
+    // `enable` is the only route Presentation needs: it mints a one-time secret
+    // and hands it to us to validate. That validation is what requires
+    // SANITY_API_TOKEN — without it Presentation loads but the frame stays on
+    // published content. `disable` is not wired here because Sanity has not
+    // implemented it; the site's own draft banner owns that.
+    presentationTool({
+      previewUrl: { previewMode: { enable: "/api/draft/enable" } },
+    }),
     visionTool(),
   ],
 

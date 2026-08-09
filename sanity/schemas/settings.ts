@@ -49,11 +49,20 @@ export const settingsSchema = defineType({
     defineField({
       name: "categories",
       group: "site",
-      title: "Portfolio categories",
+      title: "Archive categories",
       type: "array",
       of: [{ type: "string" }],
       description:
         'Filter taxonomy, in display order. "All pieces" is prepended automatically.',
+    }),
+    defineField({
+      name: "coursePageEnabled",
+      group: "site",
+      title: "Show the Course page",
+      type: "boolean",
+      initialValue: true,
+      description:
+        "Turn off to take the course offline: the Course entry disappears from the nav and /course returns Not Found. Unlike Coming soon mode, this affects that one page only, and it applies in development too.",
     }),
 
     // ── Coming soon ────────────────────────────────────────────────────────

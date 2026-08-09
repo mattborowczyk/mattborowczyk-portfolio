@@ -28,6 +28,16 @@ export const materials = [
 export type Material = (typeof materials)[number];
 
 /**
+ * Whether a piece is a deliverable file or a made object. Like `materials` and
+ * unlike `categories`, this is a closed set rather than CMS-editable taxonomy —
+ * it is a property of what the piece *is*, not a filing decision, so the schema
+ * spreads this list rather than keeping its own.
+ */
+export const formats = ["Digital", "Physical"] as const;
+
+export type Format = (typeof formats)[number];
+
+/**
  * A still, an animation or a clip attached to a piece. Animated formats (GIF,
  * video) are served straight from the CDN; stills go through the image
  * pipeline. See `productMedia` in sanity/lib/fetch-data.ts.
@@ -63,6 +73,13 @@ export interface Product {
   dimensions?: string;
   details?: string; // finish, stones, anything worth naming
   leadTime?: string;
+  /**
+   * Digital deliverable or made object. Optional on purpose: pieces predating
+   * the field arrive without it, and the run must keep showing them, so nothing
+   * may treat "unset" as a third state to filter on — a future digital/physical
+   * filter should show unset pieces under "all" only.
+   */
+  format?: Format;
 }
 
 export const products: Product[] = [

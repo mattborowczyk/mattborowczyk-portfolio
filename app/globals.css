@@ -89,7 +89,7 @@
     --section-xl: clamp(3.5rem, 10vw, 8.75rem); /* 56 → 140 */
     --stack-sm: clamp(1rem, 3vw, 2.5rem); /* 16 → 40 — inline row gap */
     --stack: clamp(1.75rem, 5vw, 4.5rem); /* 28 → 72 — column split gap */
-    --run: clamp(5rem, 11vw, 7.5rem); /* 80 → 120 — catalogue run gap */
+    --run: clamp(3.75rem, 8.25vw, 5.625rem); /* 60 → 90 — catalogue run gap */
 
     /* ── Measure (content widths) ──────────────────────────────────────
        Named xs…lg; `shell-*` in Tailwind. */
