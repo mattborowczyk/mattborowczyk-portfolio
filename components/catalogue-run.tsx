@@ -99,6 +99,15 @@ function OverlayVideo({ item, show }: { item: ProductMedia; show: boolean }) {
  * decoding video at 3rem, which costs far more than it can show. Pausing
  * rather than unmounting keeps the poster frame on screen, so the piece still
  * reads as an image while it is minimised.
+ *
+ * Three things hold that line, because one is not enough. `autoPlay` is bound
+ * to the state rather than always set, so a minimised piece never starts in the
+ * first place — an unconditional `autoplay` begins decoding at parse time and
+ * the effect below only catches it a paint later, which is precisely the
+ * thumbnail column this is meant to avoid. The effect drives the transitions
+ * either way. And `onPlay` re-asserts the pause, for playback we did not start:
+ * a restore from bfcache, or any of the UA behaviours that resume a muted
+ * inline video on their own.
  */
 function BaseVideo({ item, playing }: { item: ProductMedia; playing: boolean }) {
   const ref = useRef<HTMLVideoElement>(null);
@@ -114,7 +123,10 @@ function BaseVideo({ item, playing }: { item: ProductMedia; playing: boolean }) 
     <video
       ref={ref}
       src={item.url}
-      autoPlay
+      autoPlay={playing}
+      onPlay={(e) => {
+        if (!playing) e.currentTarget.pause();
+      }}
       loop
       muted
       playsInline
@@ -373,6 +385,19 @@ export default function CatalogueRun({
     }
     return order;
   }, [products, isAll, filter]);
+
+  // A filter change can take the hovered piece out from under the cursor, and
+  // the mouse handlers only exist while a piece is matched — so the `leave`
+  // that would normally clear this never fires. Left alone, the state would
+  // still be pointing at that piece the next time a filter brought it back at
+  // full size, and it would arrive already showing its hover overlay, or its
+  // info card, with the cursor nowhere near it. The pending dwell goes too,
+  // otherwise it lands a moment later and re-sets what this just cleared.
+  useEffect(() => {
+    if (timer.current) clearTimeout(timer.current);
+    setHovered(null);
+    setDwelled(null);
+  }, [filter]);
 
   // A pending dwell timer would otherwise fire into an unmounted tree.
   useEffect(() => {
