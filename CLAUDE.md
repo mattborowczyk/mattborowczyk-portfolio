@@ -46,6 +46,12 @@ depends on this — don't introduce a code path that assumes Sanity is configure
 When adding a field: schema (`sanity/schemas/*`) → projection + `*Result` type (`sanity/lib/queries.ts`) →
 normalisation/fallback (`sanity/lib/fetch-data.ts`) → seed type (`lib/*`) → component.
 
+For `product` the chain has one more link: `lib/structured-data.ts`, which maps a subset of the product
+fields into the JSON-LD on the product page. **Any edit to the product schema — a rename, a field that
+becomes optional, a new field worth exposing — must be checked against that mapping.** It is the one
+consumer nothing on screen will reveal as broken: the markup keeps validating while describing a piece that
+no longer matches the page.
+
 GROQ queries deliberately `defined()`-filter on fields the result type declares non-optional (e.g. `ref`,
 `made`), because schema validation only binds at edit time — API-written or older documents can violate it.
 

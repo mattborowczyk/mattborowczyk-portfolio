@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import ProductView from "@/components/product-view";
+import { productJsonLdScript } from "@/lib/structured-data";
 import { getProduct, getProducts, getSettings } from "@/sanity/lib/fetch-data";
 
 export const revalidate = 60; // ISR
@@ -50,10 +51,24 @@ export default async function ProductPage({
   if (!result) notFound();
 
   return (
-    <ProductView
-      product={result.product}
-      index={result.index}
-      email={settings.email}
-    />
+    <>
+      {/*
+        Structured data for the piece. The brand name comes from settings rather
+        than the seed constant so it tracks whatever the CMS says the studio is
+        called. `application/ld+json` is data, not script — the browser never
+        executes it — and the payload is escaped in productJsonLdScript.
+      */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: productJsonLdScript(result.product, settings.name),
+        }}
+      />
+      <ProductView
+        product={result.product}
+        index={result.index}
+        email={settings.email}
+      />
+    </>
   );
 }
