@@ -42,7 +42,8 @@ const productFields = groq`
     crop,
     "assetId": asset->_id,
     "url": asset->url,
-    "mime": asset->mimeType
+    "mime": asset->mimeType,
+    "posterId": poster.asset->_id
   }
 `;
 
@@ -73,6 +74,8 @@ export type ProductMediaResult = {
   assetId?: string;
   url?: string;
   mime?: string;
+  /** Poster still, on a clip only — the image the video shows before it plays. */
+  posterId?: string;
 };
 
 export type ProductResult = Omit<Product, "media"> & {

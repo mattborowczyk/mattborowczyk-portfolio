@@ -13,7 +13,12 @@ pnpm build          # next build (stop `next dev` first — it clobbers .next)
 pnpm lint           # eslint . (pnpm lint:fix to autofix)
 pnpm exec tsc --noEmit   # typecheck — this is what actually guards types
 pnpm sanity         # standalone Sanity Studio (rarely needed; /admin is the normal route)
+pnpm perf           # mobile Lighthouse + budget over /, a product page and /course
 ```
+
+`pnpm perf` needs a **production** server already running (`pnpm build && pnpm start`) — it measures
+image optimisation and prerendered HTML, neither of which `next dev` does. Point it elsewhere with
+`PERF_URL=…`. See `perf/README.md` for the budget and the numbers behind it.
 
 There is **no test suite** — CI (`.github/workflows/ci.yml`) runs lint, `tsc --noEmit`, and build, with no
 Sanity env vars, so the build exercises the local-seed fallback path. Match that before pushing.
@@ -87,6 +92,30 @@ equality (category filter, link `actionType`, pricing tab keys) — turning it o
   (video, GIF — detected by `_type === "file"` or mime) bypasses the image pipeline and the Next optimiser,
   because the pipeline flattens GIFs to one frame. Stills go through `urlFor(...)` as a **full image object**
   (asset ref + hotspot + crop), not a bare asset id, or the Studio's crop is silently ignored.
+
+### Performance
+
+Four rules, each of which was a measured regression before it was a rule. `pnpm perf` is the check;
+`perf/README.md` has the numbers.
+
+- **`useSearchParams` is contagious.** It makes React skip prerendering everything under the nearest
+  Suspense boundary, and the fallback is what ships in the HTML. `SiteNav` used to call it at the top,
+  so every static page shipped a pair of empty rails and no navigation at all until hydration. Keep
+  the call in the smallest component that needs it, wrapped in its own boundary whose fallback renders
+  the same markup with no param — the pattern in `site-nav.tsx` and in `app/(portfolio)/page.tsx`.
+- **The page entry fade belongs to a route change, not to a first load.** `PageFade` skips its
+  animation for the first page mounted in a document (`pageHasMounted` in `page-transition.tsx`).
+  Painting the whole page at opacity 0 for `--duration-page` pushes LCP out by most of that duration,
+  and there is no outgoing page to cross-fade with on a cold load anyway.
+- **One image gets `priority`, the rest stay lazy.** The catalogue's lead piece and the product hero;
+  nothing else. And the catalogue's hover overlay mounts only behind `(hover: hover) and
+  (pointer: fine)`, so a phone doesn't fetch a second full-size image per piece for a state it has no
+  way to reach.
+- **Font weights are declared in `app/layout.tsx` and cost differently per family.** Cormorant is
+  variable, so its weights share one file; Plex Mono is static instances, one preloaded file each.
+  Only 400/500 Cormorant and 400 Plex Mono are declared, because that is all the site sets. Adding a
+  weight class in a component means adding the weight there — then check whether the preload count
+  went up rather than assuming either way.
 
 ### Routing
 

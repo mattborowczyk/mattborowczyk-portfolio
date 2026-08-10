@@ -176,6 +176,18 @@ of a `<video>`.
 - **GIFs and video** are served straight from the CDN and bypass the Next image
   optimiser, which would otherwise flatten a GIF to a single frame.
 
+A video clip also takes an optional **poster frame** — a still, authored beside
+the clip in the Studio and resolved through the same image pipeline, that the
+browser shows in its place until enough of the clip has arrived to play. Without
+one the piece is an empty rectangle for the whole of that wait, which on a phone
+is most of the time a visitor spends looking at it.
+
+The catalogue's lead piece — the first one shown at full size — is loaded with
+`priority`, so it is preloaded from the document head rather than discovered
+after layout; every piece below it stays lazy. The hover overlay (a piece's
+second media item) is mounted **only** where the pointer can hover, so a phone
+never fetches a second full-size image per piece for a state it cannot reach.
+
 A piece with **no** media falls back to the sage placeholder renders, so an
 unphotographed piece still reads as designed. The course preview and the Studio
 portrait are still placeholders — `course.heroImage` is authored in the schema

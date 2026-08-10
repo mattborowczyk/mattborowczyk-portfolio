@@ -52,6 +52,14 @@ export type ProductMedia = {
    * the URL. Images flagged `animated` bypass the Next image optimiser.
    */
   animated: boolean;
+  /**
+   * Poster still for a clip, if the piece has one set. A video element with no
+   * poster paints nothing until it has buffered, so the frame sits empty for
+   * exactly as long as the clip takes to arrive; the poster is a still the
+   * browser can show immediately in its place. Only ever set on `kind:
+   * "video"`.
+   */
+  poster?: string;
 };
 
 export interface Product {
@@ -133,4 +141,5 @@ export function productViews(index: number): string[] {
     tones[(index + 3) % tones.length],
   ];
 }
+
 

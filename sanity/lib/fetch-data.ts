@@ -110,6 +110,21 @@ function productMedia(media: ProductMediaResult[] | undefined): ProductMedia[] {
         item.type === "file" || Boolean(item.mime?.startsWith("video/"));
       const isAnimated = isVideo || item.mime === "image/gif";
       return {
+        // A poster only means anything on a clip; on a still the browser has
+        // the image itself and there is nothing to stand in for. Resolved the
+        // same way as a still so it is the same size and format as the frame
+        // it fills — an unoptimised poster would cost more to show than the
+        // clip it is covering for.
+        ...(isVideo &&
+          item.posterId && {
+            poster: urlFor({
+              _type: "image",
+              asset: { _type: "reference", _ref: item.posterId },
+            })
+              .width(1600)
+              .auto("format")
+              .url(),
+          }),
         kind: isVideo ? ("video" as const) : ("image" as const),
         animated: isAnimated,
         url:

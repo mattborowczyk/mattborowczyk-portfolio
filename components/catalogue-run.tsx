@@ -41,6 +41,33 @@ function PieceHeading({ name, price }: { name: string; price?: string }) {
 const OVERLAY_FADE_MS = 350;
 
 /**
+ * Whether this visitor has a pointer that can hover at all.
+ *
+ * A media query and not a touch-events sniff, because the question is about the
+ * input device rather than the browser: a laptop with a touchscreen has both,
+ * and answering "touch" for it would take the hover states away from a mouse
+ * that is right there. It is also live — a tablet gaining a trackpad flips it —
+ * so the run does not have to be reloaded to get its hover states back.
+ *
+ * Starts false rather than reading `matchMedia` in the initialiser: there is no
+ * `window` during the server render, and a client that disagreed with the HTML
+ * on the first pass would be a hydration mismatch.
+ */
+function useHoverCapable() {
+  const [canHover, setCanHover] = useState(false);
+
+  useEffect(() => {
+    const query = window.matchMedia("(hover: hover) and (pointer: fine)");
+    setCanHover(query.matches);
+    const onChange = (e: MediaQueryListEvent) => setCanHover(e.matches);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+
+  return canHover;
+}
+
+/**
  * The hover overlay when the second media item is a clip.
  *
  * It is mounted only around a hover: a permanently-mounted overlay video would
@@ -81,6 +108,7 @@ function OverlayVideo({ item, show }: { item: ProductMedia; show: boolean }) {
   return (
     <video
       src={item.url}
+      poster={item.poster}
       autoPlay
       loop
       muted
@@ -123,6 +151,10 @@ function BaseVideo({ item, playing }: { item: ProductMedia; playing: boolean }) 
     <video
       ref={ref}
       src={item.url}
+      // A piece that opens minimised never starts its clip, so the poster is
+      // the whole of what it shows; one that has played is paused on a real
+      // frame and the poster has already done its job.
+      poster={item.poster}
       autoPlay={playing}
       onPlay={(e) => {
         if (!playing) e.currentTarget.pause();
@@ -143,6 +175,7 @@ function PieceMedia({
   sizes = FULL_SIZES,
   overlay = false,
   show = true,
+  priority = false,
 }: {
   item: ProductMedia;
   name: string;
@@ -150,6 +183,8 @@ function PieceMedia({
   /** Overlay layers sit above the base still and are decorative. */
   overlay?: boolean;
   show?: boolean;
+  /** The one piece that opens above the fold — see `Piece`. */
+  priority?: boolean;
 }) {
   const style = overlay ? { opacity: show ? 1 : 0 } : undefined;
   if (item.kind === "video") {
@@ -162,6 +197,7 @@ function PieceMedia({
       alt={overlay ? "" : item.alt || name}
       fill
       sizes={sizes}
+      priority={priority}
       aria-hidden={overlay || undefined}
       className="object-cover transition-opacity duration-base"
       // Animated sources are served untransformed; the optimiser would flatten
@@ -195,6 +231,8 @@ function Piece({
   isHover,
   isDwell,
   email,
+  isLead,
+  canHover,
 }: {
   product: Product;
   tone: string;
@@ -205,6 +243,9 @@ function Piece({
   isHover: boolean;
   isDwell: boolean;
   email: string;
+  /** First piece shown at full size — the one the run opens on. */
+  isLead: boolean;
+  canHover: boolean;
 }) {
   // `sizes` only ever grows. Landing straight on a filtered URL still asks for
   // the ~3rem derivative for every excluded piece, so the minimised column
@@ -245,6 +286,14 @@ function Piece({
             name={product.name}
             sizes={everLarge ? FULL_SIZES : THUMB_SIZES}
             show={isMatch}
+            // The lead piece is the largest thing in the opening viewport and
+            // therefore the LCP element on the catalogue. Left to the default
+            // it is `loading="lazy"` like every other piece in the run, which
+            // costs it a whole round of discovery: the browser will not even
+            // request it until layout has run. Marked priority it is preloaded
+            // from the document head instead. Only the lead — the pieces below
+            // it stay lazy, which is the other half of the same trade.
+            priority={isLead}
           />
         ) : (
           <RenderPlaceholder
@@ -260,8 +309,18 @@ function Piece({
         {/* Hover: the second media item if there is one, else the tonal stripe
             the run has always used. Only while the piece is at full size —
             minimised pieces do not take hover, and a mounted overlay image
-            would double the requests the thumbnail column costs. */}
+            would double the requests the thumbnail column costs.
+
+            And only where there is a cursor to hover with. On a touch screen
+            this layer can never be seen, but it is still a second full-size
+            image per piece, fetched as soon as the piece nears the viewport —
+            it was doubling the catalogue's image bytes on precisely the devices
+            least able to afford them. `canHover` is false through the server
+            render and the hydration that follows it, so the overlay is absent
+            from the HTML on every device and pointer-capable ones add it a beat
+            later; a hover cannot arrive before then. */}
         {isMatch &&
+          canHover &&
           (product.media.length > 1 ? (
             <PieceMedia
               item={product.media[1]}
@@ -362,6 +421,7 @@ export default function CatalogueRun({
   const [hovered, setHovered] = useState<string | null>(null);
   const [dwelled, setDwelled] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const canHover = useHoverCapable();
 
   const isAll = filter === ALL_PIECES;
 
@@ -481,6 +541,8 @@ export default function CatalogueRun({
                 isHover={hovered === p.ref}
                 isDwell={dwelled === p.ref}
                 email={email}
+                isLead={isMatch && mi === 0}
+                canHover={canHover}
               />
             </div>
           );
