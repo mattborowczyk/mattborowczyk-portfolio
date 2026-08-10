@@ -478,7 +478,7 @@ export default function CatalogueRun({
   }
 
   return (
-    <div className="flex flex-col gap-lg pt-section-lg">
+    <div className="flex flex-col gap-lg">
       <Container>
         <Eyebrow size="xs">Collection 01 — Silver &amp; Gold</Eyebrow>
       </Container>

@@ -2,19 +2,20 @@ import type { ElementType, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-/** Content measures, xs → lg. See `--shell-*` in globals.css. */
-type Shell = "xs" | "sm" | "md" | "lg";
+/** Content measures, xs → xl. See `--shell-*` in globals.css. */
+type Shell = "xs" | "sm" | "md" | "lg" | "xl";
 
 const shellClass: Record<Shell, string> = {
   xs: "max-w-shell-xs",
   sm: "max-w-shell-sm",
   md: "max-w-shell-md",
   lg: "max-w-shell-lg",
+  xl: "max-w-shell-xl",
 };
 
 /**
  * The single horizontal frame for page content: centred, capped to one of the
- * four measures, and padded by the fluid page gutter. Every page uses this
+ * measures above, and padded by the fluid page gutter. Every page uses this
  * instead of repeating a max-width + clamp() pair.
  *
  * `tight` swaps in the narrower gutter used by the full-bleed product page.

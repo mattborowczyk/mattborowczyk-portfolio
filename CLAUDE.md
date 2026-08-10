@@ -120,7 +120,7 @@ Four rules, each of which was a measured regression before it was a rule. `pnpm 
 ### Routing
 
 - `app/(portfolio)/` — public site, wrapped by `AppShell` (client component) which picks the frame by
-  pathname: `/links` bare, `/product/*` full-bleed, everything else rails/top-bar + footer.
+  pathname: `/links` bare, everything else (including `/product/*`) rails/top-bar + footer.
 - `app/(studio)/admin/[[...tool]]` — the embedded Studio. Separate route group, so it is **not** behind the
   coming-soon curtain.
 - `app/(portfolio)/_studio/` — the Studio/about page is **disabled**: the `_` prefix excludes the folder from

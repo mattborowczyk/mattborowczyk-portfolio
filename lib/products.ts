@@ -133,13 +133,4 @@ export function altToneFor(index: number): string {
   return altTones[index % altTones.length];
 }
 
-/** The three placeholder "views" shown on the product page view-switcher. */
-export function productViews(index: number): string[] {
-  return [
-    tones[index % tones.length],
-    altTones[index % altTones.length],
-    tones[(index + 3) % tones.length],
-  ];
-}
-
 

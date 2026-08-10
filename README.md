@@ -63,7 +63,7 @@ Rate limiting needs no configuration and no credentials — see
 | Route | Page | Source |
 | --- | --- | --- |
 | `/` | Catalogue — editorial run, filtered by `?filter=` | `product` |
-| `/product/[ref]` | Product — full-bleed media, spec sheet, commission CTA | `product` |
+| `/product/[ref]` | Product — media run beside the spec sheet, commission CTA | `product` |
 | `/course` | Course landing — two courses behind a toggle | `course` |
 | `/contact` | Contact + commission explainer (steps + pricing tabs) | `contact` singleton |
 | `/links` | Hidden bio-link hub — not in nav, `noindex` | `links` singleton |
@@ -72,8 +72,7 @@ Rate limiting needs no configuration and no credentials — see
 Nav is Portfolio / Course / Contact (`pageNav` in `lib/site.ts`), with the
 category filter taxonomy on the left rail (desktop) or in the top bar (mobile).
 `components/app-shell.tsx` picks the frame per route: `/links` renders bare,
-`/product/*` full-bleed with a footer, everything else rails + offset content +
-footer.
+everything else — product pages included — rails + offset content + footer.
 
 **The Studio/about page is currently disabled.** Its route lives at
 `app/(portfolio)/_studio/`, and Next.js excludes `_`-prefixed folders from

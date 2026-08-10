@@ -1,6 +1,5 @@
 "use client";
 
-import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 
 import { PageFade, PageTransitionProvider } from "@/components/page-transition";
@@ -11,8 +10,12 @@ import type { SiteSettings } from "@/sanity/lib/fetch-data";
 /**
  * Wraps every portfolio page and decides the frame per route:
  * - /links    → bare full-screen (the page centres itself; no rails/footer)
- * - /product  → full-bleed (no rails), footer below
  * - otherwise → fixed rails (desktop) / top bar (mobile), offset content + footer
+ *
+ * `/product` used to be full-bleed with no rails. It is not any more: the
+ * wordmark and the page menu are the frame, and a piece is somewhere you arrive
+ * *from* the archive, so dropping the chrome there left the one route with no
+ * way back to it but the browser's own button.
  *
  * On desktop the chrome is split in two: filters on the left, page nav on the
  * right, so the content is inset from both edges.
@@ -52,29 +55,23 @@ export default function AppShell({
     );
   }
 
-  if (pathname.startsWith("/product")) {
-    return (
-      <PageTransitionProvider>
-        <main className="min-h-screen pt-draft">{page}</main>
-        <SiteFooter settings={settings} />
-      </PageTransitionProvider>
-    );
-  }
-
   return (
     <PageTransitionProvider>
-      <Suspense
-        fallback={
-          <>
-            <div className="fixed bottom-0 left-0 top-draft w-rail bg-bone" />
-            <div className="fixed bottom-0 right-0 top-draft w-rail-right bg-bone" />
-          </>
-        }
-      >
-        <SiteNav settings={settings} />
-      </Suspense>
+      {/* No Suspense boundary here any more. There used to be one, standing in
+          for the whole nav with a pair of empty rails, because `SiteNav` read
+          the query string at its top level and so could not be prerendered.
+          That fallback was what every static page actually shipped: no
+          wordmark, no menu, no mobile bar until the bundle hydrated. The
+          boundary now sits inside `SiteNav`, around the filter list alone. */}
+      <SiteNav settings={settings} />
       <div className="min-h-screen pt-topbar-draft nav:pt-draft nav:pl-rail nav:pr-rail-right">
-        <main>{page}</main>
+        {/* Every page begins at the same height, and it is set here rather than
+            by each page, so the answer cannot drift page by page — it used to,
+            and the catalogue, the product page and Contact all opened on a
+            different line. `/links` is outside this branch and keeps its own
+            frame: it centres itself in the viewport and has no top edge to
+            share. */}
+        <main className="pt-section-lg">{page}</main>
         <SiteFooter settings={settings} />
       </div>
     </PageTransitionProvider>
