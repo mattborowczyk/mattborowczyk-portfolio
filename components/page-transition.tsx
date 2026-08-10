@@ -252,7 +252,29 @@ export function PageTransitionProvider({
       if (inPlace) {
         e.preventDefault();
         e.stopPropagation();
-        router.push(`${inPlace.pathname}${inPlace.search}`, { scroll: false });
+
+        // A route change may already be fading out when this is clicked, and
+        // the visitor has plainly changed their mind. Call it off rather than
+        // letting it land: the query push does not change the pathname, so the
+        // effect keyed on it never runs, `leaving` would stay true and hold the
+        // freshly filtered run at opacity 0 — and then the timer would fire and
+        // navigate away from it regardless, making the filter click look
+        // ignored. Undoing it here is the whole of putting the page back.
+        if (pendingNavigation.current !== null) {
+          window.clearTimeout(pendingNavigation.current);
+          pendingNavigation.current = null;
+          arrivedByNavigation = false;
+        }
+        navigating.current = false;
+        setLeaving(false);
+
+        // Hash included: nothing on the site pairs one with a query today, but
+        // the route branch below preserves it and a silent difference between
+        // the two is the kind that gets found the hard way.
+        router.push(
+          `${inPlace.pathname}${inPlace.search}${inPlace.hash}`,
+          { scroll: false },
+        );
         return;
       }
 
@@ -414,6 +436,16 @@ export function PageFade({ children }: { children: React.ReactNode }) {
     };
   }, [held]);
 
+  // A page still holding for its images has never actually been seen: it is
+  // sitting at opacity 0 with its entry paused. There is nothing to fade out,
+  // and the exit keyframe starts from `opacity: 1` — so running it here would
+  // snap the blank page fully visible and *then* fade it, which is worse than
+  // the swap it replaced. Leave it paused and let the navigation happen under
+  // it. Reachable whenever a link is clicked inside `MEDIA_WAIT_CAP_MS` of
+  // arriving, which the rails invite: they are outside this element and so stay
+  // visible and clickable for the whole hold.
+  const exiting = leaving && !held;
+
   return (
     <div
       ref={ref}
@@ -422,11 +454,11 @@ export function PageFade({ children }: { children: React.ReactNode }) {
         entering && "animate-mbpage",
         // Last, so tailwind-merge resolves the `animation` conflict in favour
         // of the exit while a page is leaving.
-        leaving && "animate-mbpageout",
+        exiting && "animate-mbpageout",
       )}
       // Only ever pauses the entry. The exit needs no inline style at all now
       // that it is an animation of its own.
-      style={!leaving && held ? { animationPlayState: "paused" } : undefined}
+      style={held ? { animationPlayState: "paused" } : undefined}
     >
       {children}
     </div>

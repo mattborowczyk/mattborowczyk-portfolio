@@ -95,7 +95,6 @@ const config: Config = {
         "stack-sm": "var(--stack-sm)",
         stack: "var(--stack)",
         run: "var(--run)",
-        "run-tight": "var(--run-tight)",
         // Chrome.
         rail: "var(--rail-width)",
         "rail-right": "var(--rail-right-width)",

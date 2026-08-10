@@ -89,13 +89,14 @@
     --section-xl: clamp(3.5rem, 10vw, 8.75rem); /* 56 → 140 */
     --stack-sm: clamp(1rem, 3vw, 2.5rem); /* 16 → 40 — inline row gap */
     --stack: clamp(1.75rem, 5vw, 4.5rem); /* 28 → 72 — column split gap */
-    --run: clamp(3.75rem, 8.25vw, 5.625rem); /* 60 → 90 — catalogue run gap */
-    /* The run gap where a full-size piece meets a filtered-out thumbnail.
-       Derived from `--run` rather than given its own clamp, so the two stay
-       locked at every viewport and there is one number to tune. A full gap
-       reads as too much against a 3rem thumbnail — the pair looks unrelated
-       rather than adjacent. */
-    --run-tight: calc(var(--run) * 0.6); /* 36 → 54 */
+    --run: clamp(1.875rem, 4.125vw, 2.8125rem); /* 30 → 45 — catalogue run gap */
+    /* `--run-tight` is gone. Where a full-size piece met a filtered-out
+       thumbnail the gap used to be its own value, 60% of the run — but the
+       minimised column reads as one block only if every gap inside it is the
+       same, and a wider seam at each end made the thumbnails look like they
+       belonged to the pieces either side rather than to each other. Both the
+       thumb↔thumb and the full↔thumb case now take `--space-sm`; see the
+       spacing table in components/catalogue-run.tsx. */
 
     /* ── Measure (content widths) ──────────────────────────────────────
        Named xs…lg; `shell-*` in Tailwind. */

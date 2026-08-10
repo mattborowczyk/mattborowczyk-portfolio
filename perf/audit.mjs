@@ -47,6 +47,20 @@ async function firstProductPath(html) {
 }
 
 /**
+ * Whether a route is actually there to measure.
+ *
+ * `/course` is the one that can vanish: the CMS can retire the course, and the
+ * route enforces that with a 404. Auditing it anyway does not fail — Lighthouse
+ * scores the not-found page perfectly happily, it clears every budget by virtue
+ * of being nearly empty, and the run reports a pass for a page that no longer
+ * exists. A gate that green-lights the wrong page is worse than one route fewer.
+ */
+async function exists(route) {
+  const res = await fetch(BASE + route, { redirect: "manual" });
+  return res.ok;
+}
+
+/**
  * Fetch a route and every image derivative it references, so the measured run
  * isn't paying for a cold transform in the image optimiser. Only worth doing
  * locally; a deployed origin is warmed by its own CDN.
@@ -139,7 +153,9 @@ let failed = false;
 
 try {
   const home = await warm("/");
-  const routes = ["/", await firstProductPath(home), "/course"];
+  const routes = ["/", await firstProductPath(home)];
+  if (await exists("/course")) routes.push("/course");
+  else console.log("skip   /course".padEnd(35) + "route not available");
 
   for (const route of routes) {
     if (route !== "/") await warm(route);

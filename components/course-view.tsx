@@ -22,6 +22,17 @@ import { cn } from "@/lib/utils";
 const TAB_FADE_MS = 350;
 
 /**
+ * Whether the visitor has asked for less motion.
+ *
+ * Read at the moment of the press rather than held in state: it is only ever
+ * consulted inside an event handler, where `window` certainly exists, so there
+ * is nothing to keep in sync and no hydration mismatch to arrange around.
+ */
+function prefersReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/**
  * Enrol CTA. When a checkout URL exists it renders a real external link;
  * otherwise it stays disabled ("opening soon"). Seed data has no URL yet, so
  * without a connected CMS this always renders disabled — as before.
@@ -52,7 +63,7 @@ function EnrolButton({
 
 function CourseBody({ course }: { course: Course }) {
   return (
-    <div className="flex animate-mbtab flex-col gap-section">
+    <div className="flex animate-mbtab flex-col gap-section motion-reduce:animate-none">
       {/* Hero (headline / intro / enrol) */}
       <Container size="lg" className="flex flex-col gap-lg">
         <h1 className="max-w-[15ch] font-serif text-heading-xl font-medium leading-none tracking-tight text-ink">
@@ -217,12 +228,31 @@ export default function CourseView({ courses }: { courses: Course[] }) {
 
   if (courses.length === 0) return null;
 
-  const fading = selected !== shown;
+  // Both values are seeded once and would otherwise outlive the list they name:
+  // if the course they point at is retired while this stays mounted, a
+  // controlled `value` matching no panel renders the section as nothing at all.
+  // Falling back to the first course keeps a page on screen.
+  const keys = courses.map((c) => c.key);
+  const safeShown = keys.includes(shown) ? shown : first;
+  const safeSelected = keys.includes(selected) ? selected : first;
+
+  const fading = safeSelected !== safeShown;
 
   function choose(next: string) {
-    if (next === selected) return;
+    if (next === safeSelected) return;
     setSelected(next);
     if (swap.current) window.clearTimeout(swap.current);
+
+    // Reduced motion takes the swap whole, with no fade and — the part that
+    // matters — no delay. Holding the panel back for `TAB_FADE_MS` while the
+    // transition it was waiting for has been suppressed leaves the section
+    // blank for a third of a second, which is a worse answer to "less motion"
+    // than the fade it was standing in for.
+    if (prefersReducedMotion()) {
+      setShown(next);
+      return;
+    }
+
     swap.current = window.setTimeout(() => {
       swap.current = null;
       setShown(next);
@@ -233,7 +263,7 @@ export default function CourseView({ courses }: { courses: Course[] }) {
   // PageTransition. The one inside `CourseBody` stays — it fires on a *tab*
   // change, which no page transition covers.
   return (
-    <Tabs value={shown} onValueChange={choose}>
+    <Tabs value={safeShown} onValueChange={choose}>
       <Container size="lg" className="flex flex-col gap-4 pb-lg">
         <Eyebrow>Course — Online, self-paced</Eyebrow>
         {/* A toggle with one option is furniture, not a choice — when the CMS
@@ -249,7 +279,7 @@ export default function CourseView({ courses }: { courses: Course[] }) {
                 // is still fading.
                 className={cn(
                   "px-md py-3 text-ink",
-                  selected === c.key && "bg-ink text-bone",
+                  safeSelected === c.key && "bg-ink text-bone",
                 )}
               >
                 {c.label}

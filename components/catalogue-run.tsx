@@ -485,22 +485,20 @@ export default function CatalogueRun({
 
       {/* The rhythm lives on the rows rather than on a container `gap`, because
           the kinds of row need different spacing and a gap can only apply one.
-          Three cases, set by the pair rather than by either piece alone:
+          Two cases now, set by the pair rather than by either piece alone:
 
-            full ↔ full        `mt-run`        the run's own rhythm
-            full ↔ thumbnail   `mt-run-tight`  60% of it
-            thumb ↔ thumb      `mt-sm`         the minimised column closes up
+            full ↔ full        `mt-run`  the run's own rhythm
+            anything ↔ thumb   `mt-sm`   the minimised column closes up
 
-          The middle case used to take the full gap, which left a filtered-out
-          thumbnail floating as far from the piece below it as two full pieces
-          sit from each other — so the run read as evenly spaced regardless of
-          what the filter had done. At 60% the thumbnails visibly belong to the
-          gaps between the matches instead of competing with them.
+          The second case used to be split in two, with a full↔thumb seam at
+          60% of the run and thumb↔thumb tighter still. That made the ends of a
+          minimised stretch wider than its middle, so the thumbnails read as
+          belonging to the pieces either side rather than to each other. One
+          value for every gap that touches a thumbnail closes the whole stretch
+          into a single block.
 
-          `mt-run` is exactly the gap the rows used to get from the container,
-          so an unfiltered run is laid out identically. The margin transitions
-          along with the pieces, so the column closes and opens at the same rate
-          as the piece that caused it. */}
+          The margin transitions along with the pieces, so the column closes and
+          opens at the same rate as the piece that caused it. */}
       <Container className="flex flex-col">
         {products.map((p, i) => {
           const gi = toneIndex.get(p.ref) ?? 0;
@@ -508,13 +506,7 @@ export default function CatalogueRun({
           const prev = products[i - 1];
           const prevIsMatch = prev && (isAll || prev.category === filter);
           const spacing =
-            i === 0
-              ? undefined
-              : isMatch && prevIsMatch
-                ? "mt-run"
-                : isMatch || prevIsMatch
-                  ? "mt-run-tight"
-                  : "mt-sm";
+            i === 0 ? undefined : isMatch && prevIsMatch ? "mt-run" : "mt-sm";
 
           const mi = matchedOrder.get(p.ref) ?? 0;
           // Alternate the run left/right of centre (desktop only). The info
