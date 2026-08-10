@@ -46,7 +46,16 @@ export default async function PortfolioLayout({
   const newsletter = await getNewsletter();
 
   return (
-    <>
+    /*
+      `data-draft-mode` is what sets `--draft-offset`, moving the fixed chrome
+      down to clear the banner (see globals.css). It has to live on an ancestor
+      of the chrome for the variable to inherit, and `display: contents` means
+      this wrapper generates no box of its own — the layout is byte-identical
+      to having no wrapper at all. Scoped here rather than on <body> in the
+      root layout deliberately: that one also wraps the Studio at /admin, which
+      has no banner over it and must not be pushed down by one.
+    */
+    <div className="contents" data-draft-mode={draft ? "" : undefined}>
       <AppShell settings={settings}>{children}</AppShell>
       <NewsletterCard
         headline={newsletter.headline}
@@ -67,6 +76,6 @@ export default async function PortfolioLayout({
           <VisualEditing />
         </>
       )}
-    </>
+    </div>
   );
 }

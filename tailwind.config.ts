@@ -95,10 +95,26 @@ const config: Config = {
         "stack-sm": "var(--stack-sm)",
         stack: "var(--stack)",
         run: "var(--run)",
+        "run-tight": "var(--run-tight)",
         // Chrome.
         rail: "var(--rail-width)",
         "rail-right": "var(--rail-right-width)",
         topbar: "var(--topbar-height)",
+        // Draft banner: `draft-banner` is its height, `draft` the amount the
+        // rest of the chrome has to move out of its way — zero unless draft
+        // mode is on. See the Draft banner block in globals.css.
+        "draft-banner": "var(--draft-banner-height)",
+        draft: "var(--draft-offset)",
+        // Mobile content clears the top bar *and* the banner in one value,
+        // so the two offsets never have to be composed at the call site.
+        "topbar-draft": "calc(var(--topbar-height) + var(--draft-offset))",
+      },
+      minHeight: {
+        // For a full-viewport box nested *inside* an element already padded by
+        // `pt-draft`: plain `min-h-screen` there stacks a second 100vh under
+        // the offset and scrolls the page by exactly the banner's height.
+        // Identical to `min-h-screen` when draft mode is off.
+        "screen-draft": "calc(100vh - var(--draft-offset))",
       },
       maxWidth: {
         "shell-xs": "var(--shell-xs)",
@@ -167,6 +183,7 @@ const config: Config = {
         fast: "var(--duration-fast)",
         base: "var(--duration-base)",
         slow: "var(--duration-slow)",
+        page: "var(--duration-page)",
       },
       keyframes: {
         // Prototype keyframes: mbfade (opacity) + mbnl (slide-in).
@@ -181,6 +198,10 @@ const config: Config = {
       },
       animation: {
         mbfade: "mbfade .4s ease both",
+        // The page-level entry fade. Same keyframe, but at the duration the
+        // navigation exit uses, so a route change fades out and back in over
+        // the same interval. See components/page-transition.tsx.
+        mbpage: "mbfade var(--duration-page) ease both",
         mbnl: "mbnl .35s ease both",
       },
     },
