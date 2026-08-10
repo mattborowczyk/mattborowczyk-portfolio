@@ -3,9 +3,16 @@
   "configurations": [
     {
       "name": "portfolio",
-      "runtimeExecutable": "npm",
+      "runtimeExecutable": "pnpm",
       "runtimeArgs": ["run", "dev"],
       "port": 3000,
+      "autoPort": true
+    },
+    {
+      "name": "portfolio-prod",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["run", "start"],
+      "port": 3100,
       "autoPort": true
     },
     {
