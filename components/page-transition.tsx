@@ -124,12 +124,30 @@ export function PageTransitionProvider({
   // Guards a second click while a fade is already running: the first has taken
   // the navigation and a second would stack another timer behind it.
   const navigating = useRef(false);
+  // The push waiting out the fade, held so it can be called off.
+  const pendingNavigation = useRef<number | null>(null);
 
   // The new route has landed — release the fade so the next click can start
   // one. The incoming content is a fresh `PageFade`, which fades itself in.
   useEffect(() => {
     navigating.current = false;
     setLeaving(false);
+
+    return () => {
+      // Only ever non-null if the timer has not fired, because the callback
+      // clears it before pushing — so this cannot cancel a navigation that is
+      // merely completing. What it catches is the route changing by some other
+      // means while the fade is still running: the visitor pressing Back, or
+      // this provider unmounting. Without it the timer still fires and pushes
+      // them forward to the link they clicked, a second after they left it.
+      if (pendingNavigation.current === null) return;
+      window.clearTimeout(pendingNavigation.current);
+      pendingNavigation.current = null;
+      // The arrival this was set for is not coming. Left true, it would hold
+      // the *next* page's entry animation waiting on images that page never
+      // announced.
+      arrivedByNavigation = false;
+    };
   }, [pathname]);
 
   useEffect(() => {
@@ -185,7 +203,11 @@ export function PageTransitionProvider({
       arrivedByNavigation = true;
       setLeaving(true);
 
-      window.setTimeout(() => {
+      pendingNavigation.current = window.setTimeout(() => {
+        // Cleared before the push, not after: from here the navigation is
+        // happening, and the cleanup above must not mistake it for one still
+        // waiting to be called off.
+        pendingNavigation.current = null;
         // Scroll while the page is blank, not after the new one has painted.
         // Next would otherwise reset the scroll itself on arrival — and with
         // `scroll-behavior: smooth` set globally that reset is *animated*,
