@@ -90,6 +90,12 @@
     --stack-sm: clamp(1rem, 3vw, 2.5rem); /* 16 → 40 — inline row gap */
     --stack: clamp(1.75rem, 5vw, 4.5rem); /* 28 → 72 — column split gap */
     --run: clamp(3.75rem, 8.25vw, 5.625rem); /* 60 → 90 — catalogue run gap */
+    /* The run gap where a full-size piece meets a filtered-out thumbnail.
+       Derived from `--run` rather than given its own clamp, so the two stay
+       locked at every viewport and there is one number to tune. A full gap
+       reads as too much against a 3rem thumbnail — the pair looks unrelated
+       rather than adjacent. */
+    --run-tight: calc(var(--run) * 0.6); /* 36 → 54 */
 
     /* ── Measure (content widths) ──────────────────────────────────────
        Named xs…lg; `shell-*` in Tailwind. */
@@ -107,6 +113,11 @@
     --duration-fast: 250ms;
     --duration-base: 350ms;
     --duration-slow: 500ms;
+    /* Route change. Far longer than the others on purpose: this one is the
+       whole transition between two pages, not a response to a hover, and it
+       runs twice (out, then in). Both directions share it — see
+       components/page-transition.tsx. */
+    --duration-page: 1000ms;
 
     /* ── Chrome ────────────────────────────────────────────────────────
        Fixed nav rail width; the content offset is derived from it. */
@@ -121,6 +132,22 @@
     --hover-card-width: clamp(10.5rem, 18vw, 14.75rem);
     --hover-card-overlap: 2.5rem;
     --topbar-height: 7.25rem; /* 116px — mobile bar + breathing room */
+
+    /* ── Draft banner ──────────────────────────────────────────────────
+       The banner is fixed across the top, so it would sit over the nav
+       rails and the mobile top bar — all of which are themselves fixed at
+       top-0 and cannot be pushed by an ancestor's padding. Instead every
+       piece of chrome offsets itself by `--draft-offset`, which is 0 until
+       something sets `data-draft-mode` (the portfolio layout, in draft
+       mode only). Off, every calc collapses to the pre-banner value. */
+    --draft-banner-height: 2.5rem; /* 40px */
+    --draft-offset: 0rem;
+  }
+
+  /* Set on a `display: contents` wrapper, so it changes no layout of its
+     own — it exists purely to let the value inherit down to the chrome. */
+  [data-draft-mode] {
+    --draft-offset: var(--draft-banner-height);
   }
 
   html {

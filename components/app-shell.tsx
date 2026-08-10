@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 
+import { PageFade, PageTransitionProvider } from "@/components/page-transition";
 import SiteNav from "@/components/site-nav";
 import SiteFooter from "@/components/site-footer";
 import type { SiteSettings } from "@/sanity/lib/fetch-data";
@@ -18,6 +19,16 @@ import type { SiteSettings } from "@/sanity/lib/fetch-data";
  *
  * `settings` is fetched once on the server (in the portfolio layout) and threaded
  * down so the nav + footer read the same CMS-with-fallback source as the pages.
+ *
+ * Page content goes through `PageTransition` in every branch, so navigation
+ * cross-fades wherever it starts from. The rails and the footer sit outside it
+ * deliberately — they are the frame, and they stay put.
+ *
+ * Every branch pads by `--draft-offset` so nothing starts underneath the draft
+ * banner. It resolves to 0 outside draft mode, which is why these stay padding
+ * on a `min-h-screen` box rather than a shorter box pushed down by a margin:
+ * the element still measures exactly one viewport either way, so turning the
+ * banner on never introduces a scrollbar.
  */
 export default function AppShell({
   children,
@@ -28,35 +39,44 @@ export default function AppShell({
 }) {
   const pathname = usePathname();
 
+  // Keyed on the pathname so each route gets a fresh element to fade in from —
+  // see PageFade. Deliberately the pathname and not the full URL: a catalogue
+  // filter only changes the query, and the run animates that itself.
+  const page = <PageFade key={pathname}>{children}</PageFade>;
+
   if (pathname === "/links") {
-    return <main className="min-h-screen">{children}</main>;
+    return (
+      <PageTransitionProvider>
+        <main className="min-h-screen pt-draft">{page}</main>
+      </PageTransitionProvider>
+    );
   }
 
   if (pathname.startsWith("/product")) {
     return (
-      <>
-        <main className="min-h-screen">{children}</main>
+      <PageTransitionProvider>
+        <main className="min-h-screen pt-draft">{page}</main>
         <SiteFooter settings={settings} />
-      </>
+      </PageTransitionProvider>
     );
   }
 
   return (
-    <>
+    <PageTransitionProvider>
       <Suspense
         fallback={
           <>
-            <div className="fixed left-0 top-0 h-screen w-rail bg-bone" />
-            <div className="fixed right-0 top-0 h-screen w-rail-right bg-bone" />
+            <div className="fixed bottom-0 left-0 top-draft w-rail bg-bone" />
+            <div className="fixed bottom-0 right-0 top-draft w-rail-right bg-bone" />
           </>
         }
       >
         <SiteNav settings={settings} />
       </Suspense>
-      <div className="min-h-screen pt-topbar nav:pt-0 nav:pl-rail nav:pr-rail-right">
-        <main>{children}</main>
+      <div className="min-h-screen pt-topbar-draft nav:pt-draft nav:pl-rail nav:pr-rail-right">
+        <main>{page}</main>
         <SiteFooter settings={settings} />
       </div>
-    </>
+    </PageTransitionProvider>
   );
 }

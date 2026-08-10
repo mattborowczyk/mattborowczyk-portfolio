@@ -31,7 +31,11 @@ export default function LinksHub({
 }) {
   const { items, socials } = links;
   return (
-    <div className="flex min-h-screen animate-mbfade flex-col items-center justify-center px-6 py-2xl">
+    /* `min-h-screen-draft`, not `min-h-screen`: this sits inside a <main> that
+       is already padded down by the draft banner, so a full 100vh here would
+       push the page 40px past the viewport and put a scrollbar on what is
+       meant to be a single centred screen. Resolves to 100vh when off. */
+    <div className="flex min-h-screen-draft flex-col items-center justify-center px-6 py-2xl">
       <div className="flex w-full max-w-shell-xs flex-col items-center gap-lg">
         <div className="flex flex-col items-center gap-md">
           <div className="flex flex-col items-center gap-3xs">

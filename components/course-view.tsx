@@ -174,11 +174,11 @@ function CourseBody({ course }: { course: Course }) {
 
 export default function CourseView({ courses }: { courses: Course[] }) {
   if (courses.length === 0) return null;
+  // No `animate-mbfade` on the root: the page-level fade is owned by
+  // PageTransition. The one inside `CourseBody` stays — it fires on a *tab*
+  // change, which no page transition covers.
   return (
-    <Tabs
-      defaultValue={courses[0].key}
-      className="animate-mbfade pt-section-lg"
-    >
+    <Tabs defaultValue={courses[0].key} className="pt-section-lg">
       <Container size="lg" className="flex flex-col gap-4 pb-lg">
         <Eyebrow>Course — Online, self-paced</Eyebrow>
         {/* A toggle with one option is furniture, not a choice — when the CMS

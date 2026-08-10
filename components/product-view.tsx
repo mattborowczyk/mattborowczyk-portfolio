@@ -86,7 +86,7 @@ export default function ProductView({
     .join(" · ");
 
   return (
-    <div className="flex animate-mbfade flex-col gap-5">
+    <div className="flex flex-col gap-5">
       {/* Back nav — full width, outside the content measure */}
       <div className="px-gutter-tight pt-md">
         <Link

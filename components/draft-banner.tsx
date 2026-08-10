@@ -8,6 +8,12 @@ import { usePathname } from "next/navigation";
  * always a way out. Draft mode is a cookie: without an exit it survives tab
  * closes and sticks to the browser indefinitely.
  *
+ * Full-bleed and fixed to the top rather than tucked into a corner, because the
+ * failure mode this exists to prevent is *not noticing*. Everything else on the
+ * page is bone and ink and quiet; this is the one element allowed to shout. The
+ * site chrome moves down by `--draft-offset` to make room — see the Draft
+ * banner block in globals.css.
+ *
  * A client component only to read the pathname, so "exit" returns to the page
  * the editor was on. And a plain `<a>`, not a `Link`: `/api/draft/disable`
  * clears the cookie and redirects, and a client-side navigation would render
@@ -17,14 +23,22 @@ export default function DraftBanner() {
   const pathname = usePathname();
 
   return (
-    <div className="fixed bottom-0 left-0 z-50 flex items-center gap-3 bg-ink px-3 py-2 font-mono text-2xs uppercase tracking-wide-md text-bone">
+    <div
+      role="status"
+      className="fixed inset-x-0 top-0 z-50 flex h-draft-banner items-center justify-center gap-3 bg-ink px-4 font-mono text-2xs uppercase tracking-wide-md text-bone"
+    >
       <span aria-hidden className="text-gold">
         ●
       </span>
-      <span>Draft preview</span>
+      <span>
+        Draft preview
+        {/* The qualifier is the useful half but not the load-bearing half, so
+            it is what gets dropped rather than wrapped on a narrow screen. */}
+        <span className="hidden xs:inline"> — showing unpublished edits</span>
+      </span>
       <a
         href={`/api/draft/disable?redirect=${encodeURIComponent(pathname)}`}
-        className="underline underline-offset-2 transition-opacity duration-fast hover:opacity-70"
+        className="border border-bone px-2 py-1 leading-none transition-colors duration-fast hover:bg-bone hover:text-ink"
       >
         Exit
       </a>
