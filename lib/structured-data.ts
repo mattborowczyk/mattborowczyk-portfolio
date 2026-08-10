@@ -16,19 +16,56 @@ import { BASE_URL } from "@/lib/site";
  */
 
 /**
- * `price` is a display string carrying the symbol and thousands separators
- * ("£1,180"); structured data wants a bare number, so everything that isn't a
- * digit or a decimal point is stripped.
- *
- * A piece with no price — deliberately optional in `Product`, so work can be
- * shown before its price is settled — yields `undefined`, and the caller drops
- * the whole `offers` block. `price: 0` or `NaN` would be a claim about the
- * piece rather than the absence of one.
+ * Only the symbols the catalogue actually uses. `$` is deliberately absent: it
+ * is four different currencies depending on where the piece was priced, and a
+ * guess between them is exactly the kind of confident wrong answer this file
+ * must not publish.
  */
-function offerPrice(price: string | undefined): number | undefined {
+const CURRENCY_BY_SYMBOL: Record<string, string> = { "£": "GBP", "€": "EUR" };
+
+/**
+ * One amount, with its symbol on either side — the seed writes "£420", the CMS
+ * writes "60€". A comma is only accepted in thousands position, so "50,50" (a
+ * European decimal comma) is refused rather than read as fifty thousand.
+ */
+const PRICE_PATTERN =
+  /^(£|€)?\s?((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?)\s?(£|€)?$/;
+
+/**
+ * `price` is a display string carrying its own currency symbol; structured data
+ * wants the number and the ISO code apart.
+ *
+ * Matched whole rather than stripped of non-digits, because the field is free
+ * text in the Studio — the schema only *suggests* a format in its description —
+ * and stripping turns anything else into a plausible-looking lie: "£420–£560"
+ * becomes 420560, "£420 + VAT" quietly loses the qualifier. A wrong price in a
+ * search result is worse than no price, so anything that is not a single
+ * amount with a known symbol yields `undefined` and the caller drops the whole
+ * `offers` block.
+ *
+ * The currency is read from the string and never assumed. Hard-coding it is how
+ * a catalogue priced in euros comes to advertise sterling — the number looks
+ * right, so nothing on the page or in the markup gives it away.
+ *
+ * A piece with no price at all yields `undefined` too — deliberately optional
+ * in `Product`, so work can be shown before its price is settled. `price: 0` or
+ * `NaN` would be a claim about the piece rather than the absence of one.
+ */
+function offerPrice(
+  price: string | undefined,
+): { value: number; currency: string } | undefined {
   if (!price) return undefined;
-  const value = Number(price.replace(/[^0-9.]/g, ""));
-  return Number.isFinite(value) && value > 0 ? value : undefined;
+  const match = price.trim().match(PRICE_PATTERN);
+  if (!match) return undefined;
+
+  const [, leading, amount, trailing] = match;
+  // Exactly one symbol, either side of the number. None means the currency is
+  // unknown; two means the string contradicts itself. Neither is guessable.
+  if (Boolean(leading) === Boolean(trailing)) return undefined;
+  const currency = CURRENCY_BY_SYMBOL[leading ?? trailing];
+
+  const value = Number(amount.replace(/,/g, ""));
+  return Number.isFinite(value) && value > 0 ? { value, currency } : undefined;
 }
 
 function productJsonLd(product: Product, brand: string) {
@@ -58,11 +95,8 @@ function productJsonLd(product: Product, brand: string) {
     ...(price !== undefined && {
       offers: {
         "@type": "Offer",
-        price,
-        // Hard-coded because every price in the catalogue is quoted in sterling.
-        // If that ever stops being true the currency has to come from the data,
-        // or the number and the symbol on the page disagree.
-        priceCurrency: "GBP",
+        price: price.value,
+        priceCurrency: price.currency,
         availability: "https://schema.org/PreOrder",
         url,
       },
