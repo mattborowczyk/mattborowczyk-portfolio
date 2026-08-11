@@ -90,11 +90,17 @@ const nextConfig: NextConfig = {
    * browser console. So the split is deliberate: the public site is locked
    * down, /admin is left to Sanity — it sits behind Sanity's own auth and
    * serves no untrusted content.
+   *
+   * The exclusion is anchored to the whole segment (`admin` followed by `/` or
+   * the end of the path) rather than a bare prefix. `/((?!admin).*)` would also
+   * skip `/administrator` and `/admin-preview`, which are not the Studio — they
+   * are 404s, and a 404 is a rendered page that should carry the policy like
+   * any other.
    */
   async headers() {
     return [
       {
-        source: "/((?!admin).*)",
+        source: "/((?!admin(?:/|$)).*)",
         headers: [
           ...baseHeaders,
           {
