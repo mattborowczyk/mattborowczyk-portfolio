@@ -3,21 +3,31 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
+import { cn } from "@/lib/utils";
+
 /**
  * Exit length — must match `--duration-page` in globals.css, which is also what
  * the `animate-mbpage` entry runs at. The same number both ways on purpose: an
  * exit quicker than the entry (or the reverse) reads as two unrelated effects
  * rather than one movement.
  */
-const PAGE_FADE_MS = 1000;
+const PAGE_FADE_MS = 500;
 
 /**
  * How long the incoming page will wait for its own images before fading in
  * regardless. The wait is what stops a piece from popping in a beat after the
  * page around it, but it can only ever be a courtesy — on a slow connection the
  * alternative to showing an unfinished page is showing nothing at all.
+ *
+ * Capped at one fade length, and deliberately not longer. The chrome does not
+ * wait for anything: the filter rail fades back in over `--duration-page` from
+ * the moment the route lands. Every millisecond this sits above that is a
+ * millisecond of the nav being fully back while the page under it is still
+ * blank — which reads as the content lagging the frame, not as one transition.
+ * It was 1200ms against a 1000ms fade, which was already most of a second of
+ * that; against 500ms it would be more than double.
  */
-const MEDIA_WAIT_CAP_MS = 1200;
+const MEDIA_WAIT_CAP_MS = 500;
 
 /** True from the moment a navigation is committed to until the new route lands. */
 const LeavingContext = createContext(false);
@@ -39,6 +49,24 @@ const LeavingContext = createContext(false);
  * is always false, and on the client it is false on the load that hydrates.
  */
 let arrivedByNavigation = false;
+
+/**
+ * Whether a `PageFade` has already mounted in this document.
+ *
+ * The entry fade belongs to a *route change*, not to arriving at the site. On
+ * the first load it costs exactly what it looks like it costs: the page is
+ * painted at opacity 0 and spends `--duration-page` becoming visible, and the
+ * largest element is not "contentful" to the browser until it does — so LCP is
+ * pushed out by most of a second on a page whose bytes were all there from the
+ * start. Nothing is animating *from* anything on that load either; there is no
+ * outgoing page it is cross-fading with, only a blank screen it fades up out of.
+ *
+ * So the first `PageFade` renders plain and every one after it fades in. False
+ * on the server and false on the render that hydrates, which is what keeps the
+ * markup identical across the two; the effect below flips it once the first page
+ * is mounted, and by then only a navigation can mount another.
+ */
+let pageHasMounted = false;
 
 /** Whether a route change is currently fading the page out. */
 export function usePageLeaving() {
@@ -66,25 +94,66 @@ function navigationTarget(e: MouseEvent): URL | null {
   return linkTarget(anchor);
 }
 
-/** The same test, against an anchor alone — used for hover prefetching. */
-function linkTarget(anchor: HTMLAnchorElement): URL | null {
-  if (anchor.hasAttribute("download")) return null;
-  if (anchor.target && anchor.target !== "_self") return null;
+/**
+ * A link that stays on this route and only changes the query — the catalogue
+ * filters, and nothing else on the site today.
+ *
+ * These get taken over too, but for the opposite reason to a route change:
+ * not to animate them, to stop them being animated *away*. Left to the anchor
+ * they were performing a full document load — the whole page fetched again,
+ * React re-initialised, and the scroll therefore back at the top, which is the
+ * one thing a filter must not do, since the pieces it filters are exactly where
+ * you were looking. Pushing through the router keeps it a client render, and
+ * `scroll: false` keeps the position. If the filtered run is shorter than the
+ * scroll, the browser clamps to the last screen on its own, which is the
+ * behaviour wanted at the bottom anyway.
+ */
+function inPlaceTarget(e: MouseEvent): URL | null {
+  if (e.defaultPrevented || e.button !== 0) return null;
+  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return null;
+
+  const anchor = (e.target as Element | null)?.closest?.("a");
+  if (!anchor || !(anchor instanceof HTMLAnchorElement)) return null;
+  if (!sameSiteTarget(anchor)) return null;
+
+  const url = new URL(anchor.href, location.href);
+  if (url.pathname !== location.pathname) return null;
+  // A bare `#hash` on the current view is the browser's business, not ours.
+  if (url.search === location.search) return null;
+  return url;
+}
+
+/**
+ * Whether this anchor is one the router may take at all — shared by both tests
+ * above, since "is this ours" is the same question whether the destination is
+ * another route or the same one with a different query.
+ */
+function sameSiteTarget(anchor: HTMLAnchorElement): boolean {
+  if (anchor.hasAttribute("download")) return false;
+  if (anchor.target && anchor.target !== "_self") return false;
   // Deliberate opt-out, for a link that must perform a real document request.
-  if (anchor.dataset.noTransition !== undefined) return null;
+  if (anchor.dataset.noTransition !== undefined) return false;
 
   // `anchor.href` is already absolute. A `mailto:`/`tel:` link parses to the
   // opaque "null" origin and so falls out here with everything cross-site —
   // the commission links throughout the run rely on that.
   const url = new URL(anchor.href, location.href);
-  if (url.origin !== location.origin) return null;
+  if (url.origin !== location.origin) return false;
 
   // Route handlers and the Studio are real document loads, not app
   // navigations: `/api/draft/disable` has to reach the server to clear the
   // cookie, and pushing it through the router would render from the router
   // cache instead. The Studio is a separate 1.6MB bundle outside this tree.
-  if (url.pathname.startsWith("/api/")) return null;
-  if (url.pathname.startsWith("/admin")) return null;
+  if (url.pathname.startsWith("/api/")) return false;
+  if (url.pathname.startsWith("/admin")) return false;
+
+  return true;
+}
+
+/** The same test, against an anchor alone — used for hover prefetching. */
+function linkTarget(anchor: HTMLAnchorElement): URL | null {
+  if (!sameSiteTarget(anchor)) return null;
+  const url = new URL(anchor.href, location.href);
 
   // Same page: a catalogue filter (`/?filter=Rings`) or an in-page hash. Those
   // animate in place — the run grows and shrinks its own pieces — and fading
@@ -175,6 +244,40 @@ export function PageTransitionProvider({
     }
 
     function onClick(e: MouseEvent) {
+      // A filter change. Taken before the reduced-motion check below, because
+      // nothing here animates — this branch exists to keep the navigation
+      // client-side and the scroll where it was, which a visitor who has asked
+      // for less motion wants just as much as anyone.
+      const inPlace = inPlaceTarget(e);
+      if (inPlace) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // A route change may already be fading out when this is clicked, and
+        // the visitor has plainly changed their mind. Call it off rather than
+        // letting it land: the query push does not change the pathname, so the
+        // effect keyed on it never runs, `leaving` would stay true and hold the
+        // freshly filtered run at opacity 0 — and then the timer would fire and
+        // navigate away from it regardless, making the filter click look
+        // ignored. Undoing it here is the whole of putting the page back.
+        if (pendingNavigation.current !== null) {
+          window.clearTimeout(pendingNavigation.current);
+          pendingNavigation.current = null;
+          arrivedByNavigation = false;
+        }
+        navigating.current = false;
+        setLeaving(false);
+
+        // Hash included: nothing on the site pairs one with a query today, but
+        // the route branch below preserves it and a silent difference between
+        // the two is the kind that gets found the hard way.
+        router.push(
+          `${inPlace.pathname}${inPlace.search}${inPlace.hash}`,
+          { scroll: false },
+        );
+        return;
+      }
+
       const url = navigationTarget(e);
       if (!url) return;
 
@@ -255,10 +358,29 @@ export function PageTransitionProvider({
  * needs none of that. Everything below only ever *pauses* that animation, so
  * the failure mode of the script not running is the plain fade, not a blank
  * page.
+ *
+ * The **exit is an animation too**, and that is a fix rather than a symmetry.
+ * It used to be a transition to `opacity: 0` that also set `animation: none`,
+ * because a `both`-filled entry keyframe outranks any ordinary declaration and
+ * would otherwise pin the element opaque. But removing an animation and
+ * changing the property it was animating in the same style recalculation does
+ * not reliably start a transition — there is no before-change value left to
+ * interpolate from — so the page did not fade out, it vanished. Only ever from
+ * the second navigation onward, which is what made it look intermittent: the
+ * first page of a document has no entry animation to remove, so its transition
+ * worked, and every page after it had one. Two keyframes at one duration have
+ * nothing to contend over.
+ *
+ * The first page of a document is the exception and gets no entry animation at
+ * all — see `pageHasMounted`.
  */
 export function PageFade({ children }: { children: React.ReactNode }) {
   const leaving = usePageLeaving();
   const ref = useRef<HTMLDivElement>(null);
+  // Same reasoning as `held` below: read in the initialiser so the very first
+  // render already knows, rather than a frame of animation playing and then
+  // being taken away.
+  const [entering] = useState(() => pageHasMounted);
   // Read in the initialiser, so a page arrived at through a transition is
   // already paused on its very first render — no effect, no frame of fade
   // played before the hold applies. Reading a module flag here is safe under
@@ -268,6 +390,7 @@ export function PageFade({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     arrivedByNavigation = false;
+    pageHasMounted = true;
   }, []);
 
   // Hold the fade until the images that are actually going to show have
@@ -313,24 +436,29 @@ export function PageFade({ children }: { children: React.ReactNode }) {
     };
   }, [held]);
 
+  // A page still holding for its images has never actually been seen: it is
+  // sitting at opacity 0 with its entry paused. There is nothing to fade out,
+  // and the exit keyframe starts from `opacity: 1` — so running it here would
+  // snap the blank page fully visible and *then* fade it, which is worse than
+  // the swap it replaced. Leave it paused and let the navigation happen under
+  // it. Reachable whenever a link is clicked inside `MEDIA_WAIT_CAP_MS` of
+  // arriving, which the rails invite: they are outside this element and so stay
+  // visible and clickable for the whole hold.
+  const exiting = leaving && !held;
+
   return (
     <div
       ref={ref}
-      className="animate-mbpage transition-opacity duration-page motion-reduce:animate-none motion-reduce:transition-none"
-      style={
-        leaving
-          ? // `animation: none` is not decoration here — it is what lets the
-            // exit happen at all. A running (or `both`-filled, and so still
-            // applying) animation outranks every ordinary declaration in the
-            // cascade, inline styles included, so the entry keyframe would
-            // otherwise pin this at opacity 1 and the fade-out would never be
-            // visible. Dropping the animation hands the property back to the
-            // transition.
-            { animation: "none", opacity: 0 }
-          : held
-            ? { animationPlayState: "paused" }
-            : undefined
-      }
+      className={cn(
+        "motion-reduce:animate-none",
+        entering && "animate-mbpage",
+        // Last, so tailwind-merge resolves the `animation` conflict in favour
+        // of the exit while a page is leaving.
+        exiting && "animate-mbpageout",
+      )}
+      // Only ever pauses the entry. The exit needs no inline style at all now
+      // that it is an animation of its own.
+      style={held ? { animationPlayState: "paused" } : undefined}
     >
       {children}
     </div>

@@ -42,7 +42,12 @@ const productFields = groq`
     crop,
     "assetId": asset->_id,
     "url": asset->url,
-    "mime": asset->mimeType
+    "mime": asset->mimeType,
+    poster{
+      hotspot,
+      crop,
+      "assetId": asset->_id
+    }
   }
 `;
 
@@ -73,6 +78,17 @@ export type ProductMediaResult = {
   assetId?: string;
   url?: string;
   mime?: string;
+  /**
+   * Poster still, on a clip only — the image the video shows before it plays.
+   * Projected as a whole image object rather than a bare asset id: the schema
+   * gives it `hotspot: true`, and the builder needs the hotspot and crop
+   * alongside the reference or it silently ignores them.
+   */
+  poster?: {
+    hotspot?: SanityImageHotspot;
+    crop?: SanityImageCrop;
+    assetId?: string;
+  };
 };
 
 export type ProductResult = Omit<Product, "media"> & {

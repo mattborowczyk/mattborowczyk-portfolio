@@ -41,6 +41,33 @@ function PieceHeading({ name, price }: { name: string; price?: string }) {
 const OVERLAY_FADE_MS = 350;
 
 /**
+ * Whether this visitor has a pointer that can hover at all.
+ *
+ * A media query and not a touch-events sniff, because the question is about the
+ * input device rather than the browser: a laptop with a touchscreen has both,
+ * and answering "touch" for it would take the hover states away from a mouse
+ * that is right there. It is also live — a tablet gaining a trackpad flips it —
+ * so the run does not have to be reloaded to get its hover states back.
+ *
+ * Starts false rather than reading `matchMedia` in the initialiser: there is no
+ * `window` during the server render, and a client that disagreed with the HTML
+ * on the first pass would be a hydration mismatch.
+ */
+function useHoverCapable() {
+  const [canHover, setCanHover] = useState(false);
+
+  useEffect(() => {
+    const query = window.matchMedia("(hover: hover) and (pointer: fine)");
+    setCanHover(query.matches);
+    const onChange = (e: MediaQueryListEvent) => setCanHover(e.matches);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+
+  return canHover;
+}
+
+/**
  * The hover overlay when the second media item is a clip.
  *
  * It is mounted only around a hover: a permanently-mounted overlay video would
@@ -81,6 +108,7 @@ function OverlayVideo({ item, show }: { item: ProductMedia; show: boolean }) {
   return (
     <video
       src={item.url}
+      poster={item.poster}
       autoPlay
       loop
       muted
@@ -109,7 +137,15 @@ function OverlayVideo({ item, show }: { item: ProductMedia; show: boolean }) {
  * a restore from bfcache, or any of the UA behaviours that resume a muted
  * inline video on their own.
  */
-function BaseVideo({ item, playing }: { item: ProductMedia; playing: boolean }) {
+function BaseVideo({
+  item,
+  playing,
+  priority,
+}: {
+  item: ProductMedia;
+  playing: boolean;
+  priority: boolean;
+}) {
   const ref = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -120,19 +156,44 @@ function BaseVideo({ item, playing }: { item: ProductMedia; playing: boolean }) 
   }, [playing]);
 
   return (
-    <video
-      ref={ref}
-      src={item.url}
-      autoPlay={playing}
-      onPlay={(e) => {
-        if (!playing) e.currentTarget.pause();
-      }}
-      loop
-      muted
-      playsInline
-      preload="metadata"
-      className="absolute inset-0 h-full w-full object-cover"
-    />
+    <>
+      {/* The lead piece can be a clip, and `priority` used to stop dead at the
+          image branch — so the one piece the run opens on got no head start at
+          all when it happened to be a video. What paints for a clip is its
+          poster, so that is what gets the treatment: preloaded from the head,
+          at the priority `next/image` would have given the still it stands in
+          for. React hoists and dedupes this by href.
+
+          Deliberately *not* `preload="auto"` on the video below. That would
+          pull the whole clip eagerly, which is a great many bytes spent to
+          paint a frame the poster has already painted — the opposite of the
+          trade the rest of this file makes. */}
+      {priority && item.poster && (
+        <link
+          rel="preload"
+          as="image"
+          href={item.poster}
+          fetchPriority="high"
+        />
+      )}
+      <video
+        ref={ref}
+        src={item.url}
+        // A piece that opens minimised never starts its clip, so the poster is
+        // the whole of what it shows; one that has played is paused on a real
+        // frame and the poster has already done its job.
+        poster={item.poster}
+        autoPlay={playing}
+        onPlay={(e) => {
+          if (!playing) e.currentTarget.pause();
+        }}
+        loop
+        muted
+        playsInline
+        preload="metadata"
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+    </>
   );
 }
 
@@ -143,6 +204,7 @@ function PieceMedia({
   sizes = FULL_SIZES,
   overlay = false,
   show = true,
+  priority = false,
 }: {
   item: ProductMedia;
   name: string;
@@ -150,11 +212,15 @@ function PieceMedia({
   /** Overlay layers sit above the base still and are decorative. */
   overlay?: boolean;
   show?: boolean;
+  /** The one piece that opens above the fold — see `Piece`. */
+  priority?: boolean;
 }) {
   const style = overlay ? { opacity: show ? 1 : 0 } : undefined;
   if (item.kind === "video") {
+    // Overlays are hover-only and so never the lead; `priority` is the base
+    // layer's business alone.
     if (overlay) return <OverlayVideo item={item} show={show} />;
-    return <BaseVideo item={item} playing={show} />;
+    return <BaseVideo item={item} playing={show} priority={priority} />;
   }
   return (
     <Image
@@ -162,6 +228,7 @@ function PieceMedia({
       alt={overlay ? "" : item.alt || name}
       fill
       sizes={sizes}
+      priority={priority}
       aria-hidden={overlay || undefined}
       className="object-cover transition-opacity duration-base"
       // Animated sources are served untransformed; the optimiser would flatten
@@ -195,6 +262,8 @@ function Piece({
   isHover,
   isDwell,
   email,
+  isLead,
+  canHover,
 }: {
   product: Product;
   tone: string;
@@ -205,6 +274,9 @@ function Piece({
   isHover: boolean;
   isDwell: boolean;
   email: string;
+  /** First piece shown at full size — the one the run opens on. */
+  isLead: boolean;
+  canHover: boolean;
 }) {
   // `sizes` only ever grows. Landing straight on a filtered URL still asks for
   // the ~3rem derivative for every excluded piece, so the minimised column
@@ -245,6 +317,14 @@ function Piece({
             name={product.name}
             sizes={everLarge ? FULL_SIZES : THUMB_SIZES}
             show={isMatch}
+            // The lead piece is the largest thing in the opening viewport and
+            // therefore the LCP element on the catalogue. Left to the default
+            // it is `loading="lazy"` like every other piece in the run, which
+            // costs it a whole round of discovery: the browser will not even
+            // request it until layout has run. Marked priority it is preloaded
+            // from the document head instead. Only the lead — the pieces below
+            // it stay lazy, which is the other half of the same trade.
+            priority={isLead}
           />
         ) : (
           <RenderPlaceholder
@@ -260,8 +340,18 @@ function Piece({
         {/* Hover: the second media item if there is one, else the tonal stripe
             the run has always used. Only while the piece is at full size —
             minimised pieces do not take hover, and a mounted overlay image
-            would double the requests the thumbnail column costs. */}
+            would double the requests the thumbnail column costs.
+
+            And only where there is a cursor to hover with. On a touch screen
+            this layer can never be seen, but it is still a second full-size
+            image per piece, fetched as soon as the piece nears the viewport —
+            it was doubling the catalogue's image bytes on precisely the devices
+            least able to afford them. `canHover` is false through the server
+            render and the hydration that follows it, so the overlay is absent
+            from the HTML on every device and pointer-capable ones add it a beat
+            later; a hover cannot arrive before then. */}
         {isMatch &&
+          canHover &&
           (product.media.length > 1 ? (
             <PieceMedia
               item={product.media[1]}
@@ -362,6 +452,7 @@ export default function CatalogueRun({
   const [hovered, setHovered] = useState<string | null>(null);
   const [dwelled, setDwelled] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const canHover = useHoverCapable();
 
   const isAll = filter === ALL_PIECES;
 
@@ -418,29 +509,27 @@ export default function CatalogueRun({
   }
 
   return (
-    <div className="flex flex-col gap-lg pt-section-lg">
+    <div className="flex flex-col gap-lg">
       <Container>
         <Eyebrow size="xs">Collection 01 — Silver &amp; Gold</Eyebrow>
       </Container>
 
       {/* The rhythm lives on the rows rather than on a container `gap`, because
           the kinds of row need different spacing and a gap can only apply one.
-          Three cases, set by the pair rather than by either piece alone:
+          Two cases now, set by the pair rather than by either piece alone:
 
-            full ↔ full        `mt-run`        the run's own rhythm
-            full ↔ thumbnail   `mt-run-tight`  60% of it
-            thumb ↔ thumb      `mt-sm`         the minimised column closes up
+            full ↔ full        `mt-run`  the run's own rhythm
+            anything ↔ thumb   `mt-sm`   the minimised column closes up
 
-          The middle case used to take the full gap, which left a filtered-out
-          thumbnail floating as far from the piece below it as two full pieces
-          sit from each other — so the run read as evenly spaced regardless of
-          what the filter had done. At 60% the thumbnails visibly belong to the
-          gaps between the matches instead of competing with them.
+          The second case used to be split in two, with a full↔thumb seam at
+          60% of the run and thumb↔thumb tighter still. That made the ends of a
+          minimised stretch wider than its middle, so the thumbnails read as
+          belonging to the pieces either side rather than to each other. One
+          value for every gap that touches a thumbnail closes the whole stretch
+          into a single block.
 
-          `mt-run` is exactly the gap the rows used to get from the container,
-          so an unfiltered run is laid out identically. The margin transitions
-          along with the pieces, so the column closes and opens at the same rate
-          as the piece that caused it. */}
+          The margin transitions along with the pieces, so the column closes and
+          opens at the same rate as the piece that caused it. */}
       <Container className="flex flex-col">
         {products.map((p, i) => {
           const gi = toneIndex.get(p.ref) ?? 0;
@@ -448,13 +537,7 @@ export default function CatalogueRun({
           const prev = products[i - 1];
           const prevIsMatch = prev && (isAll || prev.category === filter);
           const spacing =
-            i === 0
-              ? undefined
-              : isMatch && prevIsMatch
-                ? "mt-run"
-                : isMatch || prevIsMatch
-                  ? "mt-run-tight"
-                  : "mt-sm";
+            i === 0 ? undefined : isMatch && prevIsMatch ? "mt-run" : "mt-sm";
 
           const mi = matchedOrder.get(p.ref) ?? 0;
           // Alternate the run left/right of centre (desktop only). The info
@@ -481,6 +564,8 @@ export default function CatalogueRun({
                 isHover={hovered === p.ref}
                 isDwell={dwelled === p.ref}
                 email={email}
+                isLead={isMatch && mi === 0}
+                canHover={canHover}
               />
             </div>
           );

@@ -196,6 +196,14 @@ export const productSchema = defineType({
           options: { accept: "video/*" },
           fields: [
             defineField({ name: "alt", title: "Alt text", type: "string" }),
+            defineField({
+              name: "poster",
+              title: "Poster frame",
+              type: "image",
+              options: { hotspot: true },
+              description:
+                "Still shown in the clip's place until enough of it has downloaded to play — usually its first frame. Without one the piece is an empty rectangle for as long as the clip takes to arrive, which on a phone is most of the time the visitor spends looking at it.",
+            }),
           ],
         },
       ],

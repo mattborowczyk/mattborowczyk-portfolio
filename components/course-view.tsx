@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+
 import RenderPlaceholder from "@/components/render-placeholder";
 import Container from "@/components/ui/container";
 import { CtaAnchor, CtaButton } from "@/components/ui/cta";
@@ -7,6 +9,28 @@ import Eyebrow from "@/components/ui/eyebrow";
 import SpecList from "@/components/ui/spec-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { type Course, courseFormat } from "@/lib/courses";
+import { cn } from "@/lib/utils";
+
+/**
+ * Tab cross-fade length — must match `--duration-base` in globals.css, which is
+ * what the panel's own `transition-opacity` runs at. The timer is what holds
+ * the outgoing panel on screen long enough to fade: Radix unmounts an inactive
+ * panel the instant its value stops being the selected one, so switching tabs
+ * immediately would leave nothing to animate and the panel would simply be
+ * replaced — which is the "swift" swap this exists to soften.
+ */
+const TAB_FADE_MS = 350;
+
+/**
+ * Whether the visitor has asked for less motion.
+ *
+ * Read at the moment of the press rather than held in state: it is only ever
+ * consulted inside an event handler, where `window` certainly exists, so there
+ * is nothing to keep in sync and no hydration mismatch to arrange around.
+ */
+function prefersReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
 
 /**
  * Enrol CTA. When a checkout URL exists it renders a real external link;
@@ -39,7 +63,7 @@ function EnrolButton({
 
 function CourseBody({ course }: { course: Course }) {
   return (
-    <div className="flex animate-mbfade flex-col gap-section">
+    <div className="flex animate-mbtab flex-col gap-section motion-reduce:animate-none">
       {/* Hero (headline / intro / enrol) */}
       <Container size="lg" className="flex flex-col gap-lg">
         <h1 className="max-w-[15ch] font-serif text-heading-xl font-medium leading-none tracking-tight text-ink">
@@ -172,13 +196,74 @@ function CourseBody({ course }: { course: Course }) {
   );
 }
 
+/**
+ * A tab change fades the panel out and the next one in, rather than swapping
+ * it in one frame.
+ *
+ * Two pieces of state, and they are deliberately out of step. `selected` is the
+ * tab the visitor just pressed and drives the segmented control, so the
+ * highlight moves under the cursor with no delay. `shown` is the tab Radix is
+ * actually on, and it lags by one fade — which is the whole trick, because
+ * Radix unmounts a panel as soon as it stops being the selected one, and an
+ * unmounted node cannot fade. Holding its value back keeps the outgoing panel
+ * mounted for exactly as long as it takes to fade it out.
+ *
+ * The cost is that `aria-selected` follows `shown` and so trails the highlight
+ * by `TAB_FADE_MS`. That is the better of the two trades available: the
+ * alternative is keeping both panels mounted and stacked, which sizes the
+ * section to the taller course and leaves a gap under the shorter one.
+ */
 export default function CourseView({ courses }: { courses: Course[] }) {
+  const first = courses[0]?.key ?? "";
+  const [selected, setSelected] = useState(first);
+  const [shown, setShown] = useState(first);
+  const swap = useRef<number | null>(null);
+
+  // A pending swap would otherwise land after the page had gone.
+  useEffect(() => {
+    return () => {
+      if (swap.current) window.clearTimeout(swap.current);
+    };
+  }, []);
+
   if (courses.length === 0) return null;
+
+  // Both values are seeded once and would otherwise outlive the list they name:
+  // if the course they point at is retired while this stays mounted, a
+  // controlled `value` matching no panel renders the section as nothing at all.
+  // Falling back to the first course keeps a page on screen.
+  const keys = courses.map((c) => c.key);
+  const safeShown = keys.includes(shown) ? shown : first;
+  const safeSelected = keys.includes(selected) ? selected : first;
+
+  const fading = safeSelected !== safeShown;
+
+  function choose(next: string) {
+    if (next === safeSelected) return;
+    setSelected(next);
+    if (swap.current) window.clearTimeout(swap.current);
+
+    // Reduced motion takes the swap whole, with no fade and — the part that
+    // matters — no delay. Holding the panel back for `TAB_FADE_MS` while the
+    // transition it was waiting for has been suppressed leaves the section
+    // blank for a third of a second, which is a worse answer to "less motion"
+    // than the fade it was standing in for.
+    if (prefersReducedMotion()) {
+      setShown(next);
+      return;
+    }
+
+    swap.current = window.setTimeout(() => {
+      swap.current = null;
+      setShown(next);
+    }, TAB_FADE_MS);
+  }
+
   // No `animate-mbfade` on the root: the page-level fade is owned by
   // PageTransition. The one inside `CourseBody` stays — it fires on a *tab*
   // change, which no page transition covers.
   return (
-    <Tabs defaultValue={courses[0].key} className="pt-section-lg">
+    <Tabs value={safeShown} onValueChange={choose}>
       <Container size="lg" className="flex flex-col gap-4 pb-lg">
         <Eyebrow>Course — Online, self-paced</Eyebrow>
         {/* A toggle with one option is furniture, not a choice — when the CMS
@@ -189,7 +274,13 @@ export default function CourseView({ courses }: { courses: Course[] }) {
               <TabsTrigger
                 key={c.key}
                 value={c.key}
-                className="px-md py-3 text-ink data-[state=active]:bg-ink data-[state=active]:text-bone"
+                // Lit from `selected`, not from Radix's own state, so the
+                // control answers the press immediately while the panel below
+                // is still fading.
+                className={cn(
+                  "px-md py-3 text-ink",
+                  safeSelected === c.key && "bg-ink text-bone",
+                )}
               >
                 {c.label}
               </TabsTrigger>
@@ -200,7 +291,14 @@ export default function CourseView({ courses }: { courses: Course[] }) {
 
       {courses.map((c) => (
         <TabsContent key={c.key} value={c.key}>
-          <CourseBody course={c} />
+          <div
+            className={cn(
+              "transition-opacity duration-base motion-reduce:transition-none",
+              fading && "opacity-0",
+            )}
+          >
+            <CourseBody course={c} />
+          </div>
         </TabsContent>
       ))}
     </Tabs>

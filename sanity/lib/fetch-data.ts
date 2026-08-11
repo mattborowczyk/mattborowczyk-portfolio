@@ -110,6 +110,23 @@ function productMedia(media: ProductMediaResult[] | undefined): ProductMedia[] {
         item.type === "file" || Boolean(item.mime?.startsWith("video/"));
       const isAnimated = isVideo || item.mime === "image/gif";
       return {
+        // A poster only means anything on a clip; on a still the browser has
+        // the image itself and there is nothing to stand in for. Resolved
+        // exactly as a still is, hotspot and crop included — the schema gives
+        // the poster `hotspot: true`, so the Studio offers those controls and
+        // dropping them here would discard the editor's crop without saying so.
+        ...(isVideo &&
+          item.poster?.assetId && {
+            poster: urlFor({
+              _type: "image",
+              asset: { _type: "reference", _ref: item.poster.assetId },
+              hotspot: item.poster.hotspot,
+              crop: item.poster.crop,
+            })
+              .width(1600)
+              .auto("format")
+              .url(),
+          }),
         kind: isVideo ? ("video" as const) : ("image" as const),
         animated: isAnimated,
         url:

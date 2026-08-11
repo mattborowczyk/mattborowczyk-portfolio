@@ -21,7 +21,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function StudioPage() {
   const studio = await getStudio();
   return (
-    <Container size="lg" className="flex flex-col gap-stack pb-lg pt-section-lg">
+    <Container size="lg" className="flex flex-col gap-stack pb-lg">
       <div className="flex flex-col gap-md">
         <Eyebrow>Studio</Eyebrow>
         <h1 className="max-w-[16ch] font-serif text-heading-lg font-medium leading-display tracking-tight text-ink">

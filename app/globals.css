@@ -89,20 +89,25 @@
     --section-xl: clamp(3.5rem, 10vw, 8.75rem); /* 56 → 140 */
     --stack-sm: clamp(1rem, 3vw, 2.5rem); /* 16 → 40 — inline row gap */
     --stack: clamp(1.75rem, 5vw, 4.5rem); /* 28 → 72 — column split gap */
-    --run: clamp(3.75rem, 8.25vw, 5.625rem); /* 60 → 90 — catalogue run gap */
-    /* The run gap where a full-size piece meets a filtered-out thumbnail.
-       Derived from `--run` rather than given its own clamp, so the two stay
-       locked at every viewport and there is one number to tune. A full gap
-       reads as too much against a 3rem thumbnail — the pair looks unrelated
-       rather than adjacent. */
-    --run-tight: calc(var(--run) * 0.6); /* 36 → 54 */
+    --run: clamp(1.875rem, 4.125vw, 2.8125rem); /* 30 → 45 — catalogue run gap */
+    /* `--run-tight` is gone. Where a full-size piece met a filtered-out
+       thumbnail the gap used to be its own value, 60% of the run — but the
+       minimised column reads as one block only if every gap inside it is the
+       same, and a wider seam at each end made the thumbnails look like they
+       belonged to the pieces either side rather than to each other. Both the
+       thumb↔thumb and the full↔thumb case now take `--space-sm`; see the
+       spacing table in components/catalogue-run.tsx. */
 
     /* ── Measure (content widths) ──────────────────────────────────────
        Named xs…lg; `shell-*` in Tailwind. */
     --shell-xs: 25rem; /* 400px — links card */
     --shell-sm: 47.5rem; /* 760px — catalogue, contact */
-    --shell-md: 57.5rem; /* 920px — product */
+    --shell-md: 57.5rem; /* 920px — prose-width pages */
     --shell-lg: 61.25rem; /* 980px — course, studio */
+    /* 1320px — the product page only. It is the one layout that puts the
+       media run and the copy side by side, so it needs room for two columns
+       of image-plus-text rather than one column of prose. */
+    --shell-xl: 82.5rem;
 
     /* ── Elevation ─────────────────────────────────────────────────────
        One soft card shadow; the design has no deeper elevation. */
@@ -113,11 +118,14 @@
     --duration-fast: 250ms;
     --duration-base: 350ms;
     --duration-slow: 500ms;
-    /* Route change. Far longer than the others on purpose: this one is the
-       whole transition between two pages, not a response to a hover, and it
-       runs twice (out, then in). Both directions share it — see
-       components/page-transition.tsx. */
-    --duration-page: 1000ms;
+    /* Route change. Kept as its own token rather than folded into `slow`
+       even though they currently share a value: this one is the whole
+       transition between two pages, it runs *twice* (out, then in) so the
+       real wait is double what it says, and `PAGE_FADE_MS` in
+       components/page-transition.tsx has to be changed with it — the exit is
+       a JS timer and cannot read a custom property. Both directions share it
+       on purpose; an exit quicker than the entry reads as two effects. */
+    --duration-page: 500ms;
 
     /* ── Chrome ────────────────────────────────────────────────────────
        Fixed nav rail width; the content offset is derived from it. */

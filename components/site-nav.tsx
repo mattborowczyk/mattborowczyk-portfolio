@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
@@ -38,10 +39,11 @@ function filterEntries(
  * run at "/" owns one; every other page shows none, so the rails stay quiet on
  * reading pages.
  */
-function useFilterRail(settings: SiteSettings): FilterRail | null {
-  const pathname = usePathname();
-  const activeParam = useSearchParams().get("filter");
-
+function filterRailFor(
+  settings: SiteSettings,
+  pathname: string,
+  activeParam: string | null,
+): FilterRail | null {
   if (pathname === "/") {
     return {
       label: "Archive",
@@ -49,6 +51,32 @@ function useFilterRail(settings: SiteSettings): FilterRail | null {
     };
   }
   return null;
+}
+
+/**
+ * The `?filter=` value, read live.
+ *
+ * Isolated into its own component — rendered through a child function rather
+ * than called as a hook — so that the part of the nav that depends on the query
+ * string is the *only* part that depends on it. `useSearchParams` makes React
+ * skip prerendering everything under the nearest Suspense boundary, and this
+ * used to be called at the top of `SiteNav`: the boundary was the whole of the
+ * site chrome, so the wordmark, the page menu and the entire mobile top bar
+ * were absent from the HTML of every static page and appeared only once the
+ * bundle had hydrated. On a reading page the wordmark was the largest thing
+ * painted, which put LCP at the end of hydration rather than at the first
+ * paint, and a crawler was served a page with no navigation on it.
+ *
+ * Paired with a fallback rendering the same markup at `activeParam = null`, so
+ * what prerenders is the rail with "All pieces" lit — which is what an
+ * unfiltered visit shows anyway, and the great majority of visits are that.
+ */
+function LiveFilter({
+  children,
+}: {
+  children: (activeParam: string | null) => React.ReactNode;
+}) {
+  return children(useSearchParams().get("filter"));
 }
 
 function NavItem({
@@ -71,14 +99,22 @@ function NavItem({
   );
 }
 
-/** A labelled block of rail links. `align` follows the rail it sits in. */
+/**
+ * A block of rail links, optionally under an eyebrow. `align` follows the rail
+ * it sits in.
+ *
+ * The label is optional because the page menu does not carry one: "Menu" over a
+ * list of three page names says nothing the names do not, and the rail reads as
+ * navigation without being told. The filter rail keeps its heading — there the
+ * label names the taxonomy being filtered by, which the entries alone do not.
+ */
 function NavGroup({
   label,
   items,
   align = "left",
   className,
 }: {
-  label: string;
+  label?: string;
   items: NavEntry[];
   align?: "left" | "right";
   className?: string;
@@ -92,9 +128,11 @@ function NavGroup({
         className,
       )}
     >
-      <Eyebrow size="2xs" className="text-label-lighter">
-        {label}
-      </Eyebrow>
+      {label && (
+        <Eyebrow size="2xs" className="text-label-lighter">
+          {label}
+        </Eyebrow>
+      )}
       <nav className={cn("flex flex-col gap-xs", end && "items-end")}>
         {items.map((item) => (
           <NavItem key={item.href + item.label} {...item} />
@@ -120,7 +158,6 @@ function NavGroup({
  */
 export default function SiteNav({ settings }: { settings: SiteSettings }) {
   const pathname = usePathname();
-  const filters = useFilterRail(settings);
 
   // The filters leave with the run. They are the controls *for* the pieces, so
   // holding them on screen while the pieces they filter fade away would leave
@@ -144,6 +181,38 @@ export default function SiteNav({ settings }: { settings: SiteSettings }) {
       active: p.href === "/" ? pathname === "/" : pathname.startsWith(p.href),
     }));
 
+  // Whether this route has a filter rail at all is a question about the path,
+  // not about the query — so it is answerable during the prerender, and a route
+  // without one never mounts the boundary below.
+  const hasFilters = filterRailFor(settings, pathname, null) !== null;
+
+  const railFilters = (activeParam: string | null) => {
+    const rail = filterRailFor(settings, pathname, activeParam);
+    if (!rail) return null;
+    return (
+      <NavGroup label={rail.label} items={rail.items} className={filterFade} />
+    );
+  };
+
+  // Two rows rather than one dot-separated run: with the portfolio's longer
+  // taxonomy a single row wraps and orphans the separator.
+  const barFilters = (activeParam: string | null) => {
+    const rail = filterRailFor(settings, pathname, activeParam);
+    if (!rail) return null;
+    return (
+      <div
+        className={cn(
+          "flex flex-wrap items-center gap-x-3 gap-y-1.5",
+          filterFade,
+        )}
+      >
+        {rail.items.map((item) => (
+          <NavItem key={item.href + item.label} {...item} className="text-md" />
+        ))}
+      </div>
+    );
+  };
+
   return (
     <>
       {/* ── Desktop: left rail (brand + filters) ─────────────────── */}
@@ -156,12 +225,10 @@ export default function SiteNav({ settings }: { settings: SiteSettings }) {
         </Link>
 
         <div className="flex flex-1 flex-col justify-center">
-          {filters && (
-            <NavGroup
-              label={filters.label}
-              items={filters.items}
-              className={filterFade}
-            />
+          {hasFilters && (
+            <Suspense fallback={railFilters(null)}>
+              <LiveFilter>{railFilters}</LiveFilter>
+            </Suspense>
           )}
         </div>
 
@@ -173,7 +240,7 @@ export default function SiteNav({ settings }: { settings: SiteSettings }) {
 
       {/* ── Desktop: right rail (pages) ──────────────────────────── */}
       <aside className="fixed bottom-0 right-0 top-draft z-40 hidden w-rail-right flex-col justify-center bg-bone px-6 py-7 nav:flex">
-        <NavGroup label="Menu" items={pageItems} align="right" />
+        <NavGroup items={pageItems} align="right" />
       </aside>
 
       {/* ── Mobile top bar ───────────────────────────────────────── */}
@@ -181,23 +248,10 @@ export default function SiteNav({ settings }: { settings: SiteSettings }) {
         <Link href="/" className="font-sans text-lg font-bold text-gold">
           {settings.name}
         </Link>
-        {/* Two rows rather than one dot-separated run: with the portfolio's
-            longer taxonomy a single row wraps and orphans the separator. */}
-        {filters && (
-          <div
-            className={cn(
-              "flex flex-wrap items-center gap-x-3 gap-y-1.5",
-              filterFade,
-            )}
-          >
-            {filters.items.map((item) => (
-              <NavItem
-                key={item.href + item.label}
-                {...item}
-                className="text-md"
-              />
-            ))}
-          </div>
+        {hasFilters && (
+          <Suspense fallback={barFilters(null)}>
+            <LiveFilter>{barFilters}</LiveFilter>
+          </Suspense>
         )}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
           {pageItems.map((item) => (

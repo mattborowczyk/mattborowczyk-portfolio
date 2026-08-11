@@ -95,7 +95,6 @@ const config: Config = {
         "stack-sm": "var(--stack-sm)",
         stack: "var(--stack)",
         run: "var(--run)",
-        "run-tight": "var(--run-tight)",
         // Chrome.
         rail: "var(--rail-width)",
         "rail-right": "var(--rail-right-width)",
@@ -121,6 +120,7 @@ const config: Config = {
         "shell-sm": "var(--shell-sm)",
         "shell-md": "var(--shell-md)",
         "shell-lg": "var(--shell-lg)",
+        "shell-xl": "var(--shell-xl)",
       },
       width: {
         rail: "var(--rail-width)",
@@ -191,6 +191,12 @@ const config: Config = {
           from: { opacity: "0" },
           to: { opacity: "1" },
         },
+        // The page exit. A keyframe rather than a transition on purpose — see
+        // `animation` below and components/page-transition.tsx.
+        mbfadeout: {
+          from: { opacity: "1" },
+          to: { opacity: "0" },
+        },
         mbnl: {
           from: { opacity: "0", transform: "translateX(0.625rem)" },
           to: { opacity: "1", transform: "translateX(0)" },
@@ -202,6 +208,14 @@ const config: Config = {
         // navigation exit uses, so a route change fades out and back in over
         // the same interval. See components/page-transition.tsx.
         mbpage: "mbfade var(--duration-page) ease both",
+        // The matching exit. Both directions are animations, at one duration,
+        // so a route change never has a keyframe and a transition competing
+        // for `opacity` — which is a fight the transition loses silently.
+        mbpageout: "mbfadeout var(--duration-page) ease both",
+        // A tab panel arriving. Same keyframe as `mbfade`, but pinned to the
+        // duration the outgoing panel fades at, so the two halves of a tab
+        // change are one movement rather than two of different lengths.
+        mbtab: "mbfade var(--duration-base) ease both",
         mbnl: "mbnl .35s ease both",
       },
     },

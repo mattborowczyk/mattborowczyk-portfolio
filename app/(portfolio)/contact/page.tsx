@@ -24,7 +24,7 @@ export default async function ContactPage() {
   const commissionHref = commissionMailto(settings.email, "Commission Enquiry");
 
   return (
-    <Container className="flex flex-col gap-2xl pb-2xl pt-section-xl">
+    <Container className="flex flex-col gap-2xl pb-2xl">
       {/* Intro */}
       <div className="flex flex-col gap-lg">
         <div className="flex flex-col gap-md">

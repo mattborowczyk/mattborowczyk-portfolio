@@ -10,6 +10,7 @@
     "start": "next start",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "perf": "node perf/audit.mjs",
     "sanity": "sanity dev"
   },
   "dependencies": {
