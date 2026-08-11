@@ -86,7 +86,13 @@ async function audit(route, outDir) {
   const out = join(outDir, route.replace(/\W+/g, "_") + ".json");
   await run("npx", [
     "-y",
-    "lighthouse@12",
+    // Pinned to the patch, not left on `lighthouse@12`. `npx -y` resolves the
+    // range afresh on every run, so a floating major means the tool that
+    // decides pass or fail can change between two runs of the same commit —
+    // and the baselines in ./README.md are quoted against one version of it.
+    // 12.8.2 is what `@12` resolves to today (13.x is `latest`), so pinning
+    // changes no number here; it only stops the next 12.x from moving them.
+    "lighthouse@12.8.2",
     BASE + route,
     "--only-categories=performance",
     "--form-factor=mobile",

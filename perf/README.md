@@ -36,11 +36,24 @@ which is a decision worth noticing.
 
 ## Running it
 
+In one terminal, build and start the production server, and wait for Next to
+report it is listening (`✓ Ready in …`):
+
 ```bash
 pnpm build
-pnpm start &
+pnpm start
+```
+
+Then, in a second terminal:
+
+```bash
 pnpm perf
 ```
+
+Two terminals rather than `pnpm start &` followed straight by `pnpm perf`:
+backgrounding the server returns the prompt immediately, but Next has not bound
+the port yet, so the audit's first request loses the race and the run dies on a
+connection refused before it has measured anything.
 
 `pnpm perf` drives Lighthouse through `npx` (nothing is added to the
 dependencies), one run per route, and exits non-zero if any route scores under

@@ -137,7 +137,15 @@ function OverlayVideo({ item, show }: { item: ProductMedia; show: boolean }) {
  * a restore from bfcache, or any of the UA behaviours that resume a muted
  * inline video on their own.
  */
-function BaseVideo({ item, playing }: { item: ProductMedia; playing: boolean }) {
+function BaseVideo({
+  item,
+  playing,
+  priority,
+}: {
+  item: ProductMedia;
+  playing: boolean;
+  priority: boolean;
+}) {
   const ref = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -148,23 +156,44 @@ function BaseVideo({ item, playing }: { item: ProductMedia; playing: boolean }) 
   }, [playing]);
 
   return (
-    <video
-      ref={ref}
-      src={item.url}
-      // A piece that opens minimised never starts its clip, so the poster is
-      // the whole of what it shows; one that has played is paused on a real
-      // frame and the poster has already done its job.
-      poster={item.poster}
-      autoPlay={playing}
-      onPlay={(e) => {
-        if (!playing) e.currentTarget.pause();
-      }}
-      loop
-      muted
-      playsInline
-      preload="metadata"
-      className="absolute inset-0 h-full w-full object-cover"
-    />
+    <>
+      {/* The lead piece can be a clip, and `priority` used to stop dead at the
+          image branch — so the one piece the run opens on got no head start at
+          all when it happened to be a video. What paints for a clip is its
+          poster, so that is what gets the treatment: preloaded from the head,
+          at the priority `next/image` would have given the still it stands in
+          for. React hoists and dedupes this by href.
+
+          Deliberately *not* `preload="auto"` on the video below. That would
+          pull the whole clip eagerly, which is a great many bytes spent to
+          paint a frame the poster has already painted — the opposite of the
+          trade the rest of this file makes. */}
+      {priority && item.poster && (
+        <link
+          rel="preload"
+          as="image"
+          href={item.poster}
+          fetchPriority="high"
+        />
+      )}
+      <video
+        ref={ref}
+        src={item.url}
+        // A piece that opens minimised never starts its clip, so the poster is
+        // the whole of what it shows; one that has played is paused on a real
+        // frame and the poster has already done its job.
+        poster={item.poster}
+        autoPlay={playing}
+        onPlay={(e) => {
+          if (!playing) e.currentTarget.pause();
+        }}
+        loop
+        muted
+        playsInline
+        preload="metadata"
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+    </>
   );
 }
 
@@ -188,8 +217,10 @@ function PieceMedia({
 }) {
   const style = overlay ? { opacity: show ? 1 : 0 } : undefined;
   if (item.kind === "video") {
+    // Overlays are hover-only and so never the lead; `priority` is the base
+    // layer's business alone.
     if (overlay) return <OverlayVideo item={item} show={show} />;
-    return <BaseVideo item={item} playing={show} />;
+    return <BaseVideo item={item} playing={show} priority={priority} />;
   }
   return (
     <Image
