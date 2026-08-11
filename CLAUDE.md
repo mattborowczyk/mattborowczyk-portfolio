@@ -149,6 +149,25 @@ being middleware, so it never runs on pages or static assets. The 429 clients se
 keeps only application-level concerns: the `companyUrl` honeypot (deliberately not named `company`, a real
 MailerLite field) and format validation.
 
+### Security headers
+
+`headers()` in `next.config.ts`, not `netlify.toml` — `[[headers]]` there only decorates static files, and
+most of this site is rendered. Two rules: the public site gets the base set (nosniff, referrer policy,
+frame options, permissions policy) plus a CSP; `/admin` gets the base set and **no CSP**, because the Studio
+evaluates code at runtime, builds workers from blob URLs and talks to a shifting set of Sanity hosts. A
+policy loose enough for it would be worth little on the public pages.
+
+The CSP is a build-time constant, so three things follow. Adding a third-party script, font, embed or
+analytics endpoint means adding it to the matching directive or it is simply blocked — check the console on
+every route, and remember the failure is silent in `curl`. `script-src`/`style-src` keep `'unsafe-inline'`
+because Next inlines the hydration payload and the product page inlines its JSON-LD; nonces would need
+middleware and would make every route dynamic, which the performance rules above rule out. Don't "harden" it
+by adding a nonce or hash alongside — browsers ignore `'unsafe-inline'` once either is present, which breaks
+the page. `NODE_ENV` adds `'unsafe-eval'` and `ws:` in development for HMR, so a dev-only console violation
+usually means that branch, not the policy. `CSP_REPORT_ONLY=true` at build time switches the header to
+`Content-Security-Policy-Report-Only` for watching a change on a deploy preview; it is a rollout switch, and
+the site is graded on the enforcing header.
+
 ### Sanity Studio structure
 
 `studio`, `contact`, `links`, `newsletter`, `settings` are singletons — fixed document ids, enforced in two
