@@ -6,6 +6,8 @@ import { CtaButton } from "@/components/ui/cta";
 
 const DISMISS_KEY = "mb_nl_v2_dismissed";
 const OPEN_EVENT = "mb:newsletter-open";
+/** Ties the inline error to the email field via `aria-describedby`. */
+const ERROR_ID = "mb-newsletter-error";
 
 /** Dispatch from anywhere (e.g. the Links page) to open the newsletter card. */
 export function openNewsletter() {
@@ -116,13 +118,23 @@ export default function NewsletterCard({
   if (!show) return null;
 
   return (
-    <div className="animate-mbnl fixed bottom-6 right-6 z-[200] w-[min(88vw,18.25rem)] bg-card shadow-card">
+    // A labelled landmark, so the card is not a loose region of the page: it
+    // arrives on its own two seconds in, and a screen reader user meeting it at
+    // the end of the document should be told what it is before its heading.
+    <section
+      aria-label="Newsletter"
+      className="animate-mbnl fixed bottom-6 right-6 z-[200] w-[min(88vw,18.25rem)] bg-card shadow-card"
+    >
       <div className="relative flex flex-col gap-4 p-md">
+        {/* The glyph is 7×11px, which was the whole target — under half the
+            24px WCAG 2.5.8 asks for, on the one control that dismisses an
+            overlay. The box is now 24×24 with the ✕ centred in it, and the
+            offsets are pulled in to keep the glyph exactly where it was. */}
         <button
           type="button"
           onClick={dismiss}
           aria-label="Dismiss newsletter"
-          className="absolute right-4 top-3.5 font-mono text-sm leading-none text-label-lighter transition-colors hover:text-ink"
+          className="focus-ring absolute right-2 top-2 flex h-6 w-6 items-center justify-center font-mono text-sm leading-none text-label-lighter transition-colors hover:text-ink"
         >
           ✕
         </button>
@@ -136,8 +148,17 @@ export default function NewsletterCard({
           </p>
         </div>
 
+        {/* Both outcomes are announced. The success case replaces the form
+            outright and the error case appears under it, and a DOM change is
+            silent either way — a screen reader user pressed Subscribe and then
+            waited for something that had already happened. `role="status"`
+            (polite) rather than `alert`, for both: neither interrupts anything
+            the visitor is more likely to be doing. */}
         {status === "success" ? (
-          <p className="font-mono text-xs leading-relaxed tracking-wide-xs text-body">
+          <p
+            role="status"
+            className="font-mono text-xs leading-relaxed tracking-wide-xs text-body"
+          >
             {message}
           </p>
         ) : (
@@ -152,27 +173,43 @@ export default function NewsletterCard({
               onChange={(e) => setCompanyUrl(e.target.value)}
               className="absolute left-[-9999px] h-0 w-0 opacity-0"
             />
+            {/* `outline-none` with nothing in its place left the one text
+                input on the site with no focus indicator at all. The ring is
+                inset here rather than offset — the field is a bare underline
+                with no box of its own, so an outset ring would float clear of
+                anything it could be read as belonging to.
+
+                `aria-describedby` is what ties the error to the field: without
+                it the message is a paragraph that happens to sit underneath,
+                and moving focus back to the input to correct it announces the
+                label and nothing about what went wrong. */}
             <input
               type="email"
               required
               aria-label="Email address"
+              aria-describedby={status === "error" ? ERROR_ID : undefined}
+              aria-invalid={status === "error" || undefined}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
               disabled={status === "loading"}
-              className="block w-full border-b border-hairline-md bg-transparent py-2 font-mono text-sm text-ink outline-none placeholder:text-label-lighter disabled:opacity-50"
+              className="block w-full border-b border-hairline-ui bg-transparent py-2 font-mono text-sm text-ink outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gold-ink placeholder:text-label-lightest disabled:opacity-50"
             />
             <CtaButton type="submit" size="sm" block disabled={status === "loading"}>
               {status === "loading" ? "…" : "Subscribe"}
             </CtaButton>
             {status === "error" && (
-              <p className="font-mono text-2xs tracking-wide-xs text-danger">
+              <p
+                id={ERROR_ID}
+                role="status"
+                className="font-mono text-2xs tracking-wide-xs text-danger"
+              >
                 {message}
               </p>
             )}
           </form>
         )}
       </div>
-    </div>
+    </section>
   );
 }

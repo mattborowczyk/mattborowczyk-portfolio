@@ -55,7 +55,11 @@ export default async function ContactPage() {
               key={s.no}
               className="flex min-w-[8rem] flex-[1_1_9.5rem] flex-col gap-2xs border-t border-hairline-md pt-3.5"
             >
-              <div className="font-serif text-display-xl leading-none text-gold opacity-50">
+              {/* `gold-soft` at full strength, not `gold` at half. The faint
+                  touch came to 1.57:1 against bone; the numeral is 36px, so
+                  the large-text threshold of 3:1 applies and gold-soft clears
+                  it at 3.34 while still sitting back from the ink beside it. */}
+              <div className="font-serif text-display-xl leading-none text-gold-soft">
                 {s.no}
               </div>
               <div className="font-sans text-base font-bold text-ink">

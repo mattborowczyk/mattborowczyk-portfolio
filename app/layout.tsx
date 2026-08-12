@@ -55,7 +55,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${cormorant.variable} ${plexMono.variable}`}>
+    // `en-GB`, matching the copy and the `en_GB` already declared to Open
+    // Graph — it is what a screen reader picks a voice and a pronunciation
+    // dictionary from, and the site is written in British English throughout.
+    <html
+      lang="en-GB"
+      className={`${cormorant.variable} ${plexMono.variable}`}
+    >
       <body>{children}</body>
     </html>
   );

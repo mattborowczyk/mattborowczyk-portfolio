@@ -13,7 +13,10 @@ export default function CommissionPricing({ tabs }: { tabs: PricingTab[] }) {
 
   return (
     <Tabs defaultValue={tabs[0].key} className="flex flex-col gap-md">
-      <TabsList className="self-start border border-hairline-md">
+      {/* The box around the segmented control is the only thing that says it
+          is one control rather than two words; `hairline-ui` is the weight
+          that carries 3:1 against the page, as WCAG 1.4.11 asks. */}
+      <TabsList className="self-start border border-hairline-ui">
         {tabs.map((tab) => (
           <TabsTrigger
             key={tab.key}

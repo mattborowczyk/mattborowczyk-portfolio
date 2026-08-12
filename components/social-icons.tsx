@@ -56,7 +56,10 @@ export default function SocialIcons({ socials }: { socials: SocialLinks }) {
             rel="noreferrer"
             aria-label={label}
             title={label}
-            className="text-2xl text-ink opacity-60 transition-opacity hover:opacity-100"
+            // 60% ink is 4.37:1 — under the bar for text, but these are icons,
+            // and 1.4.11 asks 3:1 of a graphic you have to perceive to use the
+            // control. It clears that; the focus ring is what was missing.
+            className="focus-ring text-2xl text-ink opacity-60 transition-opacity hover:opacity-100"
           >
             <svg
               viewBox="0 0 24 24"

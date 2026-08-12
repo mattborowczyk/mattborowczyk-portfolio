@@ -29,8 +29,14 @@ const TabsTrigger = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <TabsPrimitive.Trigger
     ref={ref}
+    // The ring is drawn *inside* the trigger. These sit flush against each
+    // other inside one bordered box, so an offset ring would be clipped by the
+    // neighbour on one side and overlap it on the other; `outline-offset` of
+    // -2px keeps the whole indicator on the button it belongs to. It used to
+    // be `focus-visible:outline-none` with nothing put back, which left the
+    // segmented control keyboard-operable and invisible while operated.
     className={cn(
-      "cursor-pointer font-sans text-sm font-bold uppercase tracking-wide-md transition-colors focus-visible:outline-none disabled:pointer-events-none",
+      "cursor-pointer font-sans text-sm font-bold uppercase tracking-wide-md transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gold-ink disabled:pointer-events-none",
       className,
     )}
     {...props}
@@ -42,9 +48,12 @@ const TabsContent = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
 >(({ className, ...props }, ref) => (
+  // Radix gives the panel `tabindex="0"` so the content below a tab list is
+  // reachable, which makes it a stop in the tab order like any other — and it
+  // was another `outline-none`.
   <TabsPrimitive.Content
     ref={ref}
-    className={cn("focus-visible:outline-none", className)}
+    className={cn("focus-ring", className)}
     {...props}
   />
 ));

@@ -9,6 +9,7 @@ import Container from "@/components/ui/container";
 import Eyebrow from "@/components/ui/eyebrow";
 import { UnderlineAnchor } from "@/components/ui/underline-link";
 import { ALL_PIECES, commissionMailto } from "@/lib/site";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
 import {
   type Product,
   type ProductMedia,
@@ -139,7 +140,7 @@ function OverlayVideo({ item, show }: { item: ProductMedia; show: boolean }) {
  */
 function BaseVideo({
   item,
-  playing,
+  playing: shouldPlay,
   priority,
 }: {
   item: ProductMedia;
@@ -147,6 +148,14 @@ function BaseVideo({
   priority: boolean;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
+  // A clip that loops forever is moving content that starts on its own and
+  // does not stop, and there is no pause control on a catalogue thumbnail to
+  // offer instead. So a visitor who has asked for less motion gets the poster
+  // frame and nothing else — which is what the piece looks like at rest
+  // anyway. Folded into `playing` so the effect, `autoPlay` and the `onPlay`
+  // re-assert below all continue to agree with each other.
+  const reduced = useReducedMotion();
+  const playing = shouldPlay && !reduced;
 
   useEffect(() => {
     const el = ref.current;
@@ -306,7 +315,7 @@ function Piece({
         href={`/product/${product.ref}`}
         aria-label={`${product.name} — ${product.type}`}
         className={cn(
-          "relative block aspect-[3/4] overflow-hidden transition-[opacity,transform] duration-base motion-reduce:transition-none",
+          "focus-ring relative block aspect-[3/4] overflow-hidden transition-[opacity,transform] duration-base motion-reduce:transition-none",
           !isMatch && "opacity-65 hover:scale-[1.06] hover:opacity-100",
         )}
         style={{ backgroundColor: tone }}
@@ -369,19 +378,31 @@ function Piece({
       </Link>
 
       {/* Info card (desktop, after 500ms dwell) — parked in the margin on the
-          side the piece is offset away from. */}
+          side the piece is offset away from.
+
+          `isDwell` is now raised by keyboard focus as well as by dwell — see
+          `reveal` in the run below — and that is a fix rather than a flourish.
+          The card holds a `Commission →` link, and the card is only ever
+          *visually* hidden, so tabbing the archive used to alternate between a
+          piece and an invisible link, one per piece, with the focus ring faded
+          out along with everything else. Nothing told a keyboard user where
+          they were, roughly twenty times a page.
+
+          Note what this is deliberately *not*: `group-focus-within` classes on
+          this element. That reads better and does not work — Tailwind wraps
+          the group in `:where()`, so `group-focus-within:opacity-100` carries
+          the same specificity as the `opacity-0` it has to beat and the winner
+          comes down to which one the stylesheet happens to emit last. It lost.
+          One state, one class, no cascade to arbitrate. */}
       {isMatch && (
         <div
           className={cn(
             "absolute top-1/2 z-10 hidden w-[var(--hover-card-width)] -translate-y-1/2 flex-col gap-2xs bg-card-veil px-md pb-sm pt-3.5 shadow-card backdrop-blur-sm transition-opacity duration-base nav:flex",
+            isDwell ? "opacity-100" : "pointer-events-none opacity-0",
             cardSide === "right"
               ? "left-full ml-[calc(-1*var(--hover-card-overlap))]"
               : "right-full mr-[calc(-1*var(--hover-card-overlap))]",
           )}
-          style={{
-            opacity: isDwell ? 1 : 0,
-            pointerEvents: isDwell ? "auto" : "none",
-          }}
         >
           <PieceHeading name={product.name} price={product.price} />
           <div className="font-mono text-2xs uppercase tracking-wide-md text-label">
@@ -508,10 +529,37 @@ export default function CatalogueRun({
     setDwelled(null);
   }
 
+  /**
+   * The same reveal, reached by keyboard, and immediate.
+   *
+   * The card is what the run says about a piece — its name, its price, what it
+   * is made of, and the link to commission it — and until this existed the only
+   * way to be told any of it was to hold a cursor still over the piece for half
+   * a second. Tabbing to the piece produced nothing, and then tabbing again put
+   * focus on the commission link *inside* the invisible card.
+   *
+   * No dwell delay here on purpose. The 500ms exists so that sweeping a mouse
+   * down the column doesn't flash a card at every piece it crosses; a keyboard
+   * arrives one piece at a time, deliberately, and there is nothing to debounce.
+   */
+  function reveal(ref: string) {
+    if (timer.current) clearTimeout(timer.current);
+    setHovered(ref);
+    setDwelled(ref);
+  }
+
   return (
     <div className="flex flex-col gap-lg">
       <Container>
-        <Eyebrow size="xs">Collection 01 — Silver &amp; Gold</Eyebrow>
+        {/* The archive's `<h1>`. The page had no heading of any level — the
+            landing page of the site was a run of images with nothing above
+            them — and this line is already the thing that names what follows,
+            so it becomes the heading rather than a hidden one being invented
+            beside it. `Eyebrow` renders whatever element it is told to; the
+            styling is untouched. */}
+        <Eyebrow as="h1" size="xs">
+          Collection 01 — Silver &amp; Gold
+        </Eyebrow>
       </Container>
 
       {/* The rhythm lives on the rows rather than on a container `gap`, because
@@ -553,6 +601,12 @@ export default function CatalogueRun({
               )}
               onMouseEnter={isMatch ? () => enter(p.ref) : undefined}
               onMouseLeave={isMatch ? leave : undefined}
+              // React's onFocus/onBlur are focusin/focusout underneath, so
+              // they catch focus landing on anything inside the piece — the
+              // image link or the commission link in the card — and clear
+              // again when it leaves for a different piece.
+              onFocus={isMatch ? () => reveal(p.ref) : undefined}
+              onBlur={isMatch ? leave : undefined}
             >
               <Piece
                 product={p}

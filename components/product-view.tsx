@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
+import PieceVideo from "@/components/piece-video";
 import Container from "@/components/ui/container";
 import { CtaAnchor } from "@/components/ui/cta";
 import Eyebrow from "@/components/ui/eyebrow";
@@ -37,19 +38,10 @@ function MediaFrame({
   name: string;
   priority: boolean;
 }) {
+  // The clip is a client component of its own so this file can stay a server
+  // component while the playback still answers `prefers-reduced-motion`.
   if (item.kind === "video") {
-    return (
-      <video
-        src={item.url}
-        poster={item.poster}
-        autoPlay
-        loop
-        muted
-        playsInline
-        aria-label={item.alt || name}
-        className="absolute inset-0 h-full w-full object-contain"
-      />
-    );
+    return <PieceVideo item={item} name={name} />;
   }
   return (
     <Image
@@ -170,7 +162,7 @@ export default function ProductView({
         <div className="flex flex-col gap-md nav:col-start-1 nav:row-start-1">
           <Link
             href="/"
-            className="self-start font-mono text-xs uppercase tracking-wide-lg text-label transition-colors hover:text-ink"
+            className="focus-ring self-start font-mono text-xs uppercase tracking-wide-lg text-label transition-colors hover:text-ink"
           >
             ← Archive
           </Link>
@@ -185,9 +177,15 @@ export default function ProductView({
               className="render-stripe flex items-center justify-center"
               style={{ backgroundColor: toneFor(index) }}
             >
-              <div className="flex flex-col items-center gap-1.5 text-center font-mono text-xs uppercase text-ink-ghost">
+              {/* Was `ink-ghost` (ink at 30%), which comes to 1.7:1 over the
+                  sage tones behind it, with the reference code faded to 60% of
+                  that again. This is the one placeholder that is real content
+                  rather than decoration — the piece has no photograph, and
+                  this says so — so it is the one that has to be legible.
+                  `body-soft` holds 5.3:1 across every tone in the set. */}
+              <div className="flex flex-col items-center gap-1.5 text-center font-mono text-xs uppercase text-body-soft">
                 <div className="tracking-wide-xl">3D Render</div>
-                <div className="tracking-wide-lg opacity-60">{product.ref}</div>
+                <div className="tracking-wide-lg">{product.ref}</div>
               </div>
             </Frame>
           )}
@@ -234,7 +232,13 @@ export default function ProductView({
                     key={spec.key}
                     className="grid grid-cols-[1.75rem_minmax(0,1fr)] items-baseline"
                   >
-                    <span className="font-mono text-sm tracking-wide-xs text-label-light">
+                    {/* Hidden from assistive tech: the list is an `<ol>`, so
+                        a screen reader already numbers these items, and the
+                        marker would be read a second time in roman. */}
+                    <span
+                      aria-hidden="true"
+                      className="font-mono text-sm tracking-wide-xs text-label-light"
+                    >
                       {numerals[i] ?? i + 1}
                     </span>
                     <div className="flex flex-col gap-3xs text-base leading-relaxed text-body-soft">

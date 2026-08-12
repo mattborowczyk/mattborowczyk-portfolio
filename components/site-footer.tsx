@@ -11,7 +11,10 @@ export default function SiteFooter({ settings }: { settings: SiteSettings }) {
           href={settings.instagram}
           target="_blank"
           rel="noreferrer"
-          className="transition-colors hover:text-ink"
+          // `-my-1.5 py-1.5` takes the 15px-tall link to 27px of target
+          // without moving it — the padding makes the hit area, the negative
+          // margin hands the space back to the row. WCAG 2.5.8 wants 24.
+          className="focus-ring -my-1.5 py-1.5 transition-colors hover:text-ink"
         >
           @{settings.name}
         </a>
