@@ -162,23 +162,13 @@ const config: Config = {
           soft: "#4a463d", // secondary
           muted: "#6a655b", // muted
         },
-        // The mono label scale. Every step is darker than it was: the old
-        // ladder ran #8a857b → #b3aea3, which is 3.17:1 down to 1.91:1 on
-        // bone, and every one of those is set between 9px and 13px, so all
-        // four owed 4.5:1 and none of them paid it.
-        //
-        // Re-cut against `band` (#eae6db), the darkest surface any of them
-        // lands on, so a label reads the same in a spec block as on the page.
-        // The four steps are much closer together than they were, and that is
-        // the honest consequence rather than a choice: the room between the
-        // AA floor and `body-muted` is about one and a half stops wide. If the
-        // scale wants to be a scale again it has to come from somewhere other
-        // than lightness — size, tracking or weight.
+        // The mono label scale — values, and the reasoning behind them, in
+        // the Mono label scale block in globals.css.
         label: {
-          DEFAULT: "#5a5750", // 6.22:1 on bone
-          light: "#605d55", // 5.67:1
-          lighter: "#66625a", // 5.24:1
-          lightest: "#6b675f", // 4.86:1 (4.51:1 on band)
+          DEFAULT: "var(--label)",
+          light: "var(--label-light)",
+          lighter: "var(--label-lighter)",
+          lightest: "var(--label-lightest)",
         },
         danger: "#9a3b2f", // inline form errors
         // Sage placeholder tones (stand-ins until real renders land).

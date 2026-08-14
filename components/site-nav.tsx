@@ -12,6 +12,15 @@ import { cn } from "@/lib/utils";
 
 type NavEntry = { href: string; label: string; active: boolean };
 
+/**
+ * Accessible name for the page menu, in the one place both the rail and the
+ * mobile bar can read it from. The filter group names itself after its own
+ * eyebrow ("Archive"); this group has no visible heading — see `NavGroup` — so
+ * it needs a name given to it, and the two renderings of the same menu have to
+ * give it the same one.
+ */
+const PAGE_NAV_LABEL = "Pages";
+
 /** A filter taxonomy plus the rail heading it sits under. */
 type FilterRail = { label: string; items: NavEntry[] };
 
@@ -161,7 +170,7 @@ function NavGroup({
           way to tell the filters from the pages. The name is the rail's own
           eyebrow where there is one, so nothing new is invented for it. */}
       <nav
-        aria-label={label ?? "Pages"}
+        aria-label={label ?? PAGE_NAV_LABEL}
         className={cn("flex flex-col gap-xs", end && "items-end")}
       >
         {items.map((item) => (
@@ -226,11 +235,18 @@ export default function SiteNav({ settings }: { settings: SiteSettings }) {
 
   // Two rows rather than one dot-separated run: with the portfolio's longer
   // taxonomy a single row wraps and orphans the separator.
+  //
+  // A `nav` rather than a `div`, carrying the same name the rail's group has:
+  // the desktop chrome offered two named navigation landmarks and the mobile
+  // bar offered none, so the same two menus were jumpable on one and had to be
+  // found by reading on the other. Only one set is ever exposed — each is
+  // `display: none` at the other's width — so this adds no duplicate landmark.
   const barFilters = (activeParam: string | null) => {
     const rail = filterRailFor(settings, pathname, activeParam);
     if (!rail) return null;
     return (
-      <div
+      <nav
+        aria-label={rail.label}
         className={cn(
           "flex flex-wrap items-center gap-x-3 gap-y-1.5",
           filterFade,
@@ -239,7 +255,7 @@ export default function SiteNav({ settings }: { settings: SiteSettings }) {
         {rail.items.map((item) => (
           <NavItem key={item.href + item.label} {...item} className="text-md" />
         ))}
-      </div>
+      </nav>
     );
   };
 
@@ -295,11 +311,14 @@ export default function SiteNav({ settings }: { settings: SiteSettings }) {
             <LiveFilter>{barFilters}</LiveFilter>
           </Suspense>
         )}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <nav
+          aria-label={PAGE_NAV_LABEL}
+          className="flex flex-wrap items-center gap-x-3 gap-y-1.5"
+        >
           {pageItems.map((item) => (
             <NavItem key={item.href} {...item} className="text-md" />
           ))}
-        </div>
+        </nav>
       </header>
     </>
   );

@@ -154,6 +154,10 @@ function BaseVideo({
   // frame and nothing else — which is what the piece looks like at rest
   // anyway. Folded into `playing` so the effect, `autoPlay` and the `onPlay`
   // re-assert below all continue to agree with each other.
+  //
+  // `useReducedMotion` reports `true` until it has actually read the query, so
+  // nothing plays while the answer is still unknown — including through the
+  // server render and the hydration that follows it. See the hook.
   const reduced = useReducedMotion();
   const playing = shouldPlay && !reduced;
 

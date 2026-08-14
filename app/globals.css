@@ -59,6 +59,24 @@
     --hairline-strong: rgba(40, 38, 33, 0.3);
     --hairline-ui: rgba(40, 38, 33, 0.55); /* 3.4:1 on bone */
 
+    /* ── Mono label scale ──────────────────────────────────────────────
+       Cut against `band` (#eae6db), the darkest surface any of it lands
+       on, so a label reads the same in a spec block as on the page. The
+       ratios below are against bone; the last step is 4.51:1 on band,
+       which is what sets the floor for the whole ladder.
+
+       The four steps sit much closer together than the scale they
+       replaced (#8a857b → #b3aea3, 3.17:1 down to 1.91:1 — every one of
+       them set between 9px and 13px, and so every one of them short of
+       AA). That is arithmetic rather than taste: the room between the AA
+       floor and `--body-muted` is about a stop and a half wide. A scale
+       that wants to read as a scale again has to get it from size,
+       tracking or weight. */
+    --label: #5a5750; /* 6.22:1 on bone */
+    --label-light: #605d55; /* 5.67:1 */
+    --label-lighter: #66625a; /* 5.24:1 */
+    --label-lightest: #6b675f; /* 4.86:1 — 4.51:1 on band */
+
     /* ── Type scale — UI / body ────────────────────────────────────────
        xs…2xl. Comments show the px equivalent at a 16px root. */
     --fs-3xs: 0.4375rem; /*  7px — swatch codes */

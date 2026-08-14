@@ -20,6 +20,11 @@ import { useReducedMotion } from "@/lib/use-reduced-motion";
  * rather than always set, so the clip is never started and then stopped; the
  * effect covers the live case, where the preference changes under a page that
  * is already open, and any UA that resumes a muted inline video on its own.
+ *
+ * The hook answers `true` until it has read the query, so the server-rendered
+ * markup carries no `autoplay` and the clip cannot begin before the preference
+ * is known — the window in which a reduced-motion visitor would otherwise be
+ * shown exactly the motion they asked not to see. See lib/use-reduced-motion.
  */
 export default function PieceVideo({
   item,

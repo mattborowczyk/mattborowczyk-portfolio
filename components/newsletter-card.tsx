@@ -35,6 +35,10 @@ export default function NewsletterCard({
   const [companyUrl, setCompanyUrl] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
+  // Whether the current error is the *field's* — see `subscribe`. Separate
+  // from `status` because the card shows one message either way, and only this
+  // subset of errors may be attached to the input.
+  const [fieldError, setFieldError] = useState(false);
   // One ref for every pending timer — the auto-open delay and the post-success
   // auto-close both live here, so opening the card always cancels whichever is
   // outstanding. Previously the close timer was unowned: re-opening within 4s
@@ -55,6 +59,7 @@ export default function NewsletterCard({
     const onOpen = () => {
       if (autoTimer.current) clearTimeout(autoTimer.current);
       setStatus("idle");
+      setFieldError(false);
       setShow(true);
     };
     window.addEventListener(OPEN_EVENT, onOpen);
@@ -77,6 +82,7 @@ export default function NewsletterCard({
     e.preventDefault();
     if (!email || status === "loading") return;
     setStatus("loading");
+    setFieldError(false);
     try {
       const res = await fetch("/api/newsletter", {
         method: "POST",
@@ -107,6 +113,12 @@ export default function NewsletterCard({
         autoTimer.current = setTimeout(() => setShow(false), 4000);
       } else {
         setStatus("error");
+        // 400 is the route's answer to an address it will not accept, and the
+        // only failure that is about the *value in the field*. Everything else
+        // here — 429 above, a 500, the network giving out below — is about the
+        // request, and saying `aria-invalid` for one of those would tell a
+        // screen reader the address is wrong when it is fine.
+        setFieldError(res.status === 400);
         setMessage(data.error ?? "Something went wrong. Please try again.");
       }
     } catch {
@@ -182,13 +194,20 @@ export default function NewsletterCard({
                 `aria-describedby` is what ties the error to the field: without
                 it the message is a paragraph that happens to sit underneath,
                 and moving focus back to the input to correct it announces the
-                label and nothing about what went wrong. */}
+                label and nothing about what went wrong.
+
+                Both attributes hang off `fieldError` and not off `status`,
+                because only some of the errors are the field's. A rate limit,
+                a 500 or a dropped connection all end in the same `status` and
+                the same message, and marking the input invalid for those would
+                say the address is wrong when there is nothing wrong with it —
+                and would send someone back to re-type a perfectly good one. */}
             <input
               type="email"
               required
               aria-label="Email address"
-              aria-describedby={status === "error" ? ERROR_ID : undefined}
-              aria-invalid={status === "error" || undefined}
+              aria-describedby={fieldError ? ERROR_ID : undefined}
+              aria-invalid={fieldError || undefined}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
