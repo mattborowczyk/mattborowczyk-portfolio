@@ -9,6 +9,7 @@ import Container from "@/components/ui/container";
 import Eyebrow from "@/components/ui/eyebrow";
 import { UnderlineAnchor } from "@/components/ui/underline-link";
 import { ALL_PIECES, commissionMailto } from "@/lib/site";
+import { useReducedMotion } from "@/lib/use-reduced-motion";
 import {
   type Product,
   type ProductMedia,
@@ -139,7 +140,7 @@ function OverlayVideo({ item, show }: { item: ProductMedia; show: boolean }) {
  */
 function BaseVideo({
   item,
-  playing,
+  playing: shouldPlay,
   priority,
 }: {
   item: ProductMedia;
@@ -147,6 +148,18 @@ function BaseVideo({
   priority: boolean;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
+  // A clip that loops forever is moving content that starts on its own and
+  // does not stop, and there is no pause control on a catalogue thumbnail to
+  // offer instead. So a visitor who has asked for less motion gets the poster
+  // frame and nothing else — which is what the piece looks like at rest
+  // anyway. Folded into `playing` so the effect, `autoPlay` and the `onPlay`
+  // re-assert below all continue to agree with each other.
+  //
+  // `useReducedMotion` reports `true` until it has actually read the query, so
+  // nothing plays while the answer is still unknown — including through the
+  // server render and the hydration that follows it. See the hook.
+  const reduced = useReducedMotion();
+  const playing = shouldPlay && !reduced;
 
   useEffect(() => {
     const el = ref.current;
@@ -204,6 +217,7 @@ function PieceMedia({
   sizes = FULL_SIZES,
   overlay = false,
   show = true,
+  playing = show,
   priority = false,
 }: {
   item: ProductMedia;
@@ -212,6 +226,13 @@ function PieceMedia({
   /** Overlay layers sit above the base still and are decorative. */
   overlay?: boolean;
   show?: boolean;
+  /**
+   * Whether a clip in this slot may run. Separate from `show` because the two
+   * questions came apart: `show` is about the piece's size and drives which
+   * derivative is asked for, while this is about whether motion has been asked
+   * for at all. Defaults to `show`, so a still slot is unaffected.
+   */
+  playing?: boolean;
   /** The one piece that opens above the fold — see `Piece`. */
   priority?: boolean;
 }) {
@@ -220,7 +241,7 @@ function PieceMedia({
     // Overlays are hover-only and so never the lead; `priority` is the base
     // layer's business alone.
     if (overlay) return <OverlayVideo item={item} show={show} />;
-    return <BaseVideo item={item} playing={show} priority={priority} />;
+    return <BaseVideo item={item} playing={playing} priority={priority} />;
   }
   return (
     <Image
@@ -306,7 +327,7 @@ function Piece({
         href={`/product/${product.ref}`}
         aria-label={`${product.name} — ${product.type}`}
         className={cn(
-          "relative block aspect-[3/4] overflow-hidden transition-[opacity,transform] duration-base motion-reduce:transition-none",
+          "focus-ring relative block aspect-[3/4] overflow-hidden transition-[opacity,transform] duration-base motion-reduce:transition-none",
           !isMatch && "opacity-65 hover:scale-[1.06] hover:opacity-100",
         )}
         style={{ backgroundColor: tone }}
@@ -317,6 +338,26 @@ function Piece({
             name={product.name}
             sizes={everLarge ? FULL_SIZES : THUMB_SIZES}
             show={isMatch}
+            // A clip here now runs only while the piece is pointed at or
+            // focused, where it used to run from the moment the piece was at
+            // full size. That is WCAG 2.2.2 (Level A): moving content which
+            // starts on its own and lasts more than five seconds owes the
+            // visitor a way to pause, stop or hide it — and a looping clip has
+            // no end, so it always does. There is nowhere to put a pause
+            // control here: the clip is inside the link to the piece, and a
+            // button inside a link is not a thing a browser can resolve.
+            //
+            // Starting it on hover or focus removes the obligation rather than
+            // satisfying it, because content the visitor started is not content
+            // that started automatically — and it is the same gesture the
+            // second-media overlay above has always used, so the run behaves
+            // one way rather than two. `isHover` is raised by `reveal` on focus
+            // as well as by the mouse, so this is reachable from the keyboard.
+            //
+            // The cost, stated plainly: on a touch screen there is no hover, so
+            // a clip in the run shows its poster and nothing else. Tapping goes
+            // to the piece's own page, where it plays — with a pause control.
+            playing={isMatch && isHover}
             // The lead piece is the largest thing in the opening viewport and
             // therefore the LCP element on the catalogue. Left to the default
             // it is `loading="lazy"` like every other piece in the run, which
@@ -369,19 +410,31 @@ function Piece({
       </Link>
 
       {/* Info card (desktop, after 500ms dwell) — parked in the margin on the
-          side the piece is offset away from. */}
+          side the piece is offset away from.
+
+          `isDwell` is now raised by keyboard focus as well as by dwell — see
+          `reveal` in the run below — and that is a fix rather than a flourish.
+          The card holds a `Commission →` link, and the card is only ever
+          *visually* hidden, so tabbing the archive used to alternate between a
+          piece and an invisible link, one per piece, with the focus ring faded
+          out along with everything else. Nothing told a keyboard user where
+          they were, roughly twenty times a page.
+
+          Note what this is deliberately *not*: `group-focus-within` classes on
+          this element. That reads better and does not work — Tailwind wraps
+          the group in `:where()`, so `group-focus-within:opacity-100` carries
+          the same specificity as the `opacity-0` it has to beat and the winner
+          comes down to which one the stylesheet happens to emit last. It lost.
+          One state, one class, no cascade to arbitrate. */}
       {isMatch && (
         <div
           className={cn(
             "absolute top-1/2 z-10 hidden w-[var(--hover-card-width)] -translate-y-1/2 flex-col gap-2xs bg-card-veil px-md pb-sm pt-3.5 shadow-card backdrop-blur-sm transition-opacity duration-base nav:flex",
+            isDwell ? "opacity-100" : "pointer-events-none opacity-0",
             cardSide === "right"
               ? "left-full ml-[calc(-1*var(--hover-card-overlap))]"
               : "right-full mr-[calc(-1*var(--hover-card-overlap))]",
           )}
-          style={{
-            opacity: isDwell ? 1 : 0,
-            pointerEvents: isDwell ? "auto" : "none",
-          }}
         >
           <PieceHeading name={product.name} price={product.price} />
           <div className="font-mono text-2xs uppercase tracking-wide-md text-label">
@@ -508,10 +561,37 @@ export default function CatalogueRun({
     setDwelled(null);
   }
 
+  /**
+   * The same reveal, reached by keyboard, and immediate.
+   *
+   * The card is what the run says about a piece — its name, its price, what it
+   * is made of, and the link to commission it — and until this existed the only
+   * way to be told any of it was to hold a cursor still over the piece for half
+   * a second. Tabbing to the piece produced nothing, and then tabbing again put
+   * focus on the commission link *inside* the invisible card.
+   *
+   * No dwell delay here on purpose. The 500ms exists so that sweeping a mouse
+   * down the column doesn't flash a card at every piece it crosses; a keyboard
+   * arrives one piece at a time, deliberately, and there is nothing to debounce.
+   */
+  function reveal(ref: string) {
+    if (timer.current) clearTimeout(timer.current);
+    setHovered(ref);
+    setDwelled(ref);
+  }
+
   return (
     <div className="flex flex-col gap-lg">
       <Container>
-        <Eyebrow size="xs">Collection 01 — Silver &amp; Gold</Eyebrow>
+        {/* The archive's `<h1>`. The page had no heading of any level — the
+            landing page of the site was a run of images with nothing above
+            them — and this line is already the thing that names what follows,
+            so it becomes the heading rather than a hidden one being invented
+            beside it. `Eyebrow` renders whatever element it is told to; the
+            styling is untouched. */}
+        <Eyebrow as="h1" size="xs">
+          Collection 01 — Silver &amp; Gold
+        </Eyebrow>
       </Container>
 
       {/* The rhythm lives on the rows rather than on a container `gap`, because
@@ -553,6 +633,26 @@ export default function CatalogueRun({
               )}
               onMouseEnter={isMatch ? () => enter(p.ref) : undefined}
               onMouseLeave={isMatch ? leave : undefined}
+              // React's onFocus/onBlur are focusin/focusout underneath, so
+              // they catch focus landing on anything inside the piece — the
+              // image link or the commission link in the card — and clear
+              // again when it leaves for a different piece.
+              //
+              // The `relatedTarget` check is what keeps the second of those
+              // two reachable: tabbing from the image to the commission link
+              // is a focusout and a focusin on the same row, and clearing on
+              // the way out would take the card down and put it straight back
+              // up around the link being tabbed to. Focus leaving the document
+              // has no relatedTarget, which is outside the row, so that still
+              // clears.
+              onFocus={isMatch ? () => reveal(p.ref) : undefined}
+              onBlur={
+                isMatch
+                  ? (e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget)) leave();
+                    }
+                  : undefined
+              }
             >
               <Piece
                 product={p}

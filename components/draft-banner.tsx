@@ -38,7 +38,7 @@ export default function DraftBanner() {
       </span>
       <a
         href={`/api/draft/disable?redirect=${encodeURIComponent(pathname)}`}
-        className="border border-bone px-2 py-1 leading-none transition-colors duration-fast hover:bg-bone hover:text-ink"
+        className="border border-bone px-2 py-1 leading-none transition-colors duration-fast hover:bg-bone hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bone"
       >
         Exit
       </a>

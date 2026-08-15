@@ -105,7 +105,10 @@ function CourseBody({ course }: { course: Course }) {
                 key={i}
                 className="flex flex-wrap items-baseline gap-x-stack-sm gap-y-3 border-t border-hairline py-6"
               >
-                <div className="w-11 flex-none font-serif text-display-lg leading-none text-gold opacity-50">
+                {/* Same trade as the commission numerals on Contact: full
+                    strength in the softer gold, rather than the brand gold at
+                    half. 32px, so 3:1 is the bar and 3.34 clears it. */}
+                <div className="w-11 flex-none font-serif text-display-lg leading-none text-gold-soft">
                   {m.no}
                 </div>
                 <div className="flex min-w-0 flex-[1_1_16rem] flex-col gap-3xs">
@@ -142,7 +145,10 @@ function CourseBody({ course }: { course: Course }) {
                     key={i}
                     className="flex items-baseline gap-3 text-lg leading-normal text-body"
                   >
-                    <span className="flex-none font-mono text-sm text-gold">→</span>
+                    {/* 11px, so this one owes the full 4.5:1 — `gold-ink`. */}
+                    <span className="flex-none font-mono text-sm text-gold-ink">
+                      →
+                    </span>
                     <span>{inc}</span>
                   </div>
                 ))}
@@ -269,7 +275,7 @@ export default function CourseView({ courses }: { courses: Course[] }) {
         {/* A toggle with one option is furniture, not a choice — when the CMS
             leaves a single course enabled the page just showcases it. */}
         {courses.length > 1 && (
-          <TabsList className="self-start border border-hairline-md">
+          <TabsList className="self-start border border-hairline-ui">
             {courses.map((c) => (
               <TabsTrigger
                 key={c.key}

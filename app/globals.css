@@ -24,7 +24,30 @@
     --card-veil: rgba(237, 233, 223, 0.82); /* card over a render, softened */
     --band: #eae6db; /* muted band / spec block */
     --ink: #1c1916; /* near-black — text, buttons */
-    --gold: #b08d4f; /* champagne gold accent */
+
+    /* Champagne gold, in three weights, because one hex cannot be both the
+       brand accent and readable type. `--gold` is the accent as designed and
+       is 2.68:1 on bone — fine for a fill or a mark, short of WCAG AA for
+       anything that has to be *read*. So:
+
+         --gold        fills, marks on ink, decoration        (no contrast duty)
+         --gold-ink    gold as text at UI sizes, and the       5.14:1 on bone
+                       focus ring                              4.78:1 on band
+         --gold-soft   gold on display-size numerals only      3.34:1 on bone
+                       (≥24px, where AA drops to 3:1)
+
+       `--gold-soft` replaces what used to be `--gold` at `opacity-50`, which
+       came out at 1.57:1 — the faint decorative touch was the failure. Keep
+       it off anything below 24px. */
+    --gold: #b08d4f;
+    /* Darkened from #7d6437, which was 4.83:1 on bone but only 4.49:1 on band
+       — passing AA on the page and missing it by a hundredth in a spec block,
+       which is where the 11px course line sits. Every step of the mono label
+       scale below is already cut against band for that reason; this is the
+       same rule applied to the one gold that has to be read. Scaled down in
+       proportion, so the hue is the one that was chosen. */
+    --gold-ink: #786035;
+    --gold-soft: #9c7d45;
 
     /* Translucent ink for marks drawn straight onto a render/placeholder
        tone, where a solid grey would read as a different colour. */
@@ -32,10 +55,33 @@
     --ink-fainter: rgba(40, 40, 35, 0.4);
     --ink-ghost: rgba(40, 40, 35, 0.3);
 
-    /* Hairline rules, three weights. */
+    /* Hairline rules, three weights — all decorative, all far below 3:1. That
+       is fine for a rule between sections and not fine for the *edge of a
+       control*, which WCAG 1.4.11 asks to be identifiable. `--hairline-ui` is
+       that fourth weight: the only one heavy enough to be the sole affordance
+       of something you can operate (the segmented control, the email field). */
     --hairline: rgba(40, 38, 33, 0.12);
     --hairline-md: rgba(40, 38, 33, 0.18);
     --hairline-strong: rgba(40, 38, 33, 0.3);
+    --hairline-ui: rgba(40, 38, 33, 0.55); /* 3.4:1 on bone */
+
+    /* ── Mono label scale ──────────────────────────────────────────────
+       Cut against `band` (#eae6db), the darkest surface any of it lands
+       on, so a label reads the same in a spec block as on the page. The
+       ratios below are against bone; the last step is 4.51:1 on band,
+       which is what sets the floor for the whole ladder.
+
+       The four steps sit much closer together than the scale they
+       replaced (#8a857b → #b3aea3, 3.17:1 down to 1.91:1 — every one of
+       them set between 9px and 13px, and so every one of them short of
+       AA). That is arithmetic rather than taste: the room between the AA
+       floor and `--body-muted` is about a stop and a half wide. A scale
+       that wants to read as a scale again has to get it from size,
+       tracking or weight. */
+    --label: #5a5750; /* 6.22:1 on bone */
+    --label-light: #605d55; /* 5.67:1 */
+    --label-lighter: #66625a; /* 5.24:1 */
+    --label-lightest: #6b675f; /* 4.86:1 — 4.51:1 on band */
 
     /* ── Type scale — UI / body ────────────────────────────────────────
        xs…2xl. Comments show the px equivalent at a 16px root. */
@@ -158,16 +204,66 @@
     --draft-offset: var(--draft-banner-height);
   }
 
-  html {
-    scroll-behavior: smooth;
+  /* Gated, because this one is not a decoration that can be left running: an
+     anchor jump or a scroll reset performed smoothly is exactly the
+     vestibular trigger `prefers-reduced-motion` exists to switch off. The
+     route transition already scrolls with `behavior: "instant"` for its own
+     reasons — see components/page-transition.tsx. */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
   }
 
   body {
     @apply bg-bone font-sans text-base text-body antialiased;
   }
+
+  /* The blanket reduced-motion reset. Deliberately global rather than a
+     `motion-reduce:` variant per component: the animations here are scattered
+     across the newsletter card, the 404, the error boundary and the
+     coming-soon curtain, and the failure mode of the per-component approach is
+     silent — a new `animate-*` class simply doesn't get one and nothing says
+     so.
+
+     Near-zero durations rather than `animation: none`, because several of
+     these keyframes are `both`-filled and the element's *resting* state is the
+     keyframe's end state: removing the animation outright would leave the page
+     fade at `opacity: 0` forever. Collapsing the duration lands on the same
+     end state in one frame, which is what "no motion" should mean here.
+
+     `!important` is load-bearing — `animate-mbpage` and friends are utilities
+     of equal specificity, and the JS-driven route transition sets
+     `animation-play-state` inline on top of them. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      transition-delay: 0ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
 @layer components {
+  /* The one focus indicator, applied by class rather than spelled out at each
+     call site — there are a dozen of them across the nav, the CTAs, the
+     catalogue, the links hub and the newsletter card, and they have to agree
+     or the ring changes shape as you tab through a page.
+
+     `outline`, not a ring drawn with `box-shadow`: an outline follows the
+     element's shape, is never clipped by `overflow: hidden` (the catalogue
+     pieces are), and survives forced-colours mode. Gold-ink rather than the
+     brand gold because a focus indicator is a UI component under WCAG 1.4.11
+     and owes 3:1 against what surrounds it; plain gold gives 2.68. */
+  .focus-ring {
+    @apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-ink;
+  }
+
   /* Diagonal-stripe placeholder pattern for stand-in renders. */
   .render-stripe {
     background-image: repeating-linear-gradient(

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
  * from the caller so it can sit inside copy of any scale.
  */
 export const underlineLinkClass =
-  "border-b border-hairline-strong pb-px font-mono text-ink transition-colors hover:text-gold";
+  "focus-ring border-b border-hairline-strong pb-px font-mono text-ink transition-colors hover:text-gold-ink";
 
 export function UnderlineAnchor({
   className,

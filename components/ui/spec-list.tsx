@@ -29,9 +29,17 @@ export default function SpecList({
   className?: string;
 }) {
   return (
+    /* `minmax(0,1fr)`, not `1fr`. A `1fr` track is `minmax(auto,1fr)`, and its
+       `auto` floor is the column's *min-content* width — the longest
+       unbreakable run in it. On Contact that is `studio@mattborowczyk.com`,
+       which is 200px, so at a 320px viewport the value column refused to go
+       below 200 and pushed 7px of the page off the right edge: a horizontal
+       scrollbar, which is what WCAG 1.4.10 exists to prevent. A zero floor lets
+       the track shrink; `break-words` on the cell below is the other half, or
+       the address would simply overflow the narrower box instead. */
     <dl
       className={cn(
-        "grid grid-cols-[auto_1fr] gap-x-lg gap-y-xs font-mono text-body",
+        "grid grid-cols-[auto_minmax(0,1fr)] gap-x-lg gap-y-xs font-mono text-body",
         sizeClass[size],
         className,
       )}
@@ -41,7 +49,7 @@ export default function SpecList({
       {items.map((item, i) => (
         <div key={i} className="contents">
           <dt className="text-label-light">{item.label}</dt>
-          <dd>
+          <dd className="break-words">
             {item.href ? (
               <UnderlineAnchor
                 href={item.href}

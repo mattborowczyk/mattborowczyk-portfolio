@@ -7,8 +7,11 @@ import SocialIcons from "@/components/social-icons";
 import Eyebrow from "@/components/ui/eyebrow";
 import type { LinksContent, SiteSettings } from "@/sanity/lib/fetch-data";
 
+// `hairline-ui` rather than `hairline-md`: the border is the entire affordance
+// of these rows — there is no fill and no underline — and at 1.4:1 it was well
+// under the 3:1 WCAG 1.4.11 asks of the boundary of something operable.
 const rowClass =
-  "flex w-full items-center justify-between border border-hairline-md px-5 py-4 text-left font-sans text-base text-ink transition-colors hover:border-hairline-strong hover:bg-band";
+  "focus-ring flex w-full items-center justify-between border border-hairline-ui px-5 py-4 text-left font-sans text-base text-ink transition-colors hover:border-ink hover:bg-band";
 
 function Arrow() {
   return (
@@ -40,10 +43,16 @@ export default function LinksHub({
         <div className="flex flex-col items-center gap-md">
           <div className="flex flex-col items-center gap-3xs">
             {/* From Site Settings like every other surface — these two were
-                the last hardcoded copies of the brand name and tagline. */}
-            <div className="font-serif text-display-md font-medium text-ink">
+                the last hardcoded copies of the brand name and tagline.
+
+                An `<h1>` rather than a `<div>`: this page had no heading at any
+                level, so a screen reader's heading list for it was empty and
+                there was nothing to jump to. The name is what the page is
+                about, and it is already set at display size — the element is
+                the only thing that changes here, not a pixel of the render. */}
+            <h1 className="font-serif text-display-md font-medium text-ink">
               {settings.name}
-            </div>
+            </h1>
             {settings.tagline && <Eyebrow size="2xs">{settings.tagline}</Eyebrow>}
           </div>
         </div>

@@ -8,6 +8,37 @@ import SiteFooter from "@/components/site-footer";
 import type { SiteSettings } from "@/sanity/lib/fetch-data";
 
 /**
+ * First focusable thing in the document, invisible until it is focused.
+ *
+ * Worth the few lines: the chrome puts the wordmark, up to five catalogue
+ * filters and three page links ahead of the content in DOM order, so reaching
+ * the first piece from the top of the archive costs nine tab presses, on every
+ * route, every time. `sr-only` + `focus:not-sr-only` is the standard pair —
+ * it is in the accessibility tree throughout, and it takes up space and paints
+ * only while it holds focus.
+ *
+ * `focus:`, not `focus-visible:`: this element is unreachable by pointer, so
+ * every focus it ever gets is a keyboard focus, and `focus-visible` heuristics
+ * are not worth depending on for the one control that must not stay hidden.
+ */
+function SkipLink() {
+  return (
+    <a
+      href="#main"
+      // The padding is a `focus:` utility like the rest, and has to be:
+      // `not-sr-only` resets padding to 0 as part of undoing `sr-only`, and it
+      // would win over a plain `px-md py-sm` — variants are emitted after
+      // unmodified utilities. Applied at the same variant it loses to the
+      // padding instead, which is the point. Without it the link paints as a
+      // bare 15px strip of text on ink.
+      className="sr-only z-50 bg-ink font-mono text-xs uppercase tracking-wide-lg text-bone focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:px-md focus:py-sm focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-gold-ink"
+    >
+      Skip to content
+    </a>
+  );
+}
+
+/**
  * Wraps every portfolio page and decides the frame per route:
  * - /links    → bare full-screen (the page centres itself; no rails/footer)
  * - otherwise → fixed rails (desktop) / top bar (mobile), offset content + footer
@@ -47,16 +78,29 @@ export default function AppShell({
   // filter only changes the query, and the run animates that itself.
   const page = <PageFade key={pathname}>{children}</PageFade>;
 
+  /*
+    `tabIndex={-1}` is what makes `#main` an actual destination: without it the
+    fragment scrolls the page but leaves focus on the skip link, so the next
+    Tab goes back into the nav — the link appears to do nothing. `outline-none`
+    then suppresses the ring Firefox draws around the whole content area on
+    arrival; this is a scroll target rather than a control, and the visitor
+    just asked to be here, so there is nothing for a ring to tell them.
+  */
+  const mainProps = { id: "main", tabIndex: -1 as const };
+
   if (pathname === "/links") {
     return (
       <PageTransitionProvider>
-        <main className="min-h-screen pt-draft">{page}</main>
+        <main {...mainProps} className="min-h-screen pt-draft focus:outline-none">
+          {page}
+        </main>
       </PageTransitionProvider>
     );
   }
 
   return (
     <PageTransitionProvider>
+      <SkipLink />
       {/* No Suspense boundary here any more. There used to be one, standing in
           for the whole nav with a pair of empty rails, because `SiteNav` read
           the query string at its top level and so could not be prerendered.
@@ -71,7 +115,9 @@ export default function AppShell({
             different line. `/links` is outside this branch and keeps its own
             frame: it centres itself in the viewport and has no top edge to
             share. */}
-        <main className="pt-section-lg">{page}</main>
+        <main {...mainProps} className="pt-section-lg focus:outline-none">
+          {page}
+        </main>
         <SiteFooter settings={settings} />
       </div>
     </PageTransitionProvider>

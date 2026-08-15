@@ -145,23 +145,30 @@ const config: Config = {
           fainter: "var(--ink-fainter)",
           ghost: "var(--ink-ghost)",
         },
-        gold: "var(--gold)", // champagne gold accent
+        gold: {
+          DEFAULT: "var(--gold)", // accent — fills, marks on ink, decoration
+          ink: "var(--gold-ink)", // gold as *text*, and the focus ring
+          soft: "var(--gold-soft)", // gold on ≥24px numerals only
+        },
         // Hairline rules — usable as border-*, bg-* or text-*.
         hairline: {
           DEFAULT: "var(--hairline)",
           md: "var(--hairline-md)",
           strong: "var(--hairline-strong)",
+          ui: "var(--hairline-ui)", // the edge of an operable control
         },
         body: {
           DEFAULT: "#3a372f", // body text
           soft: "#4a463d", // secondary
           muted: "#6a655b", // muted
         },
+        // The mono label scale — values, and the reasoning behind them, in
+        // the Mono label scale block in globals.css.
         label: {
-          DEFAULT: "#8a857b",
-          light: "#9a948a",
-          lighter: "#a39d91",
-          lightest: "#b3aea3",
+          DEFAULT: "var(--label)",
+          light: "var(--label-light)",
+          lighter: "var(--label-lighter)",
+          lightest: "var(--label-lightest)",
         },
         danger: "#9a3b2f", // inline form errors
         // Sage placeholder tones (stand-ins until real renders land).

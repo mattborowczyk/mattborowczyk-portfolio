@@ -12,6 +12,15 @@ import { cn } from "@/lib/utils";
 
 type NavEntry = { href: string; label: string; active: boolean };
 
+/**
+ * Accessible name for the page menu, in the one place both the rail and the
+ * mobile bar can read it from. The filter group names itself after its own
+ * eyebrow ("Archive"); this group has no visible heading — see `NavGroup` — so
+ * it needs a name given to it, and the two renderings of the same menu have to
+ * give it the same one.
+ */
+const PAGE_NAV_LABEL = "Pages";
+
 /** A filter taxonomy plus the rail heading it sits under. */
 type FilterRail = { label: string; items: NavEntry[] };
 
@@ -79,6 +88,28 @@ function LiveFilter({
   return children(useSearchParams().get("filter"));
 }
 
+/**
+ * One rail or top-bar link.
+ *
+ * Three things here are accessibility rather than styling:
+ *
+ * `aria-current="page"` — the active entry was signalled by opacity alone, so
+ * a screen reader was given a list of links with nothing to say which one you
+ * were on. This is the answer to that, not the class below.
+ *
+ * The inactive weight is 65%, not 40%. Ink at 40% over bone composites to
+ * 2.45:1, which fails AA for text of any size; 65% comes to 5.12:1. The active
+ * state is a smaller step than it was as a result, which is why the attribute
+ * above matters more than it looks — and it is the obvious thing to revisit
+ * with the rest of the palette, since the distinction now wants to come from
+ * something other than lightness.
+ *
+ * `py-1.5 -my-1.5` grows the hit area from 18px to 30px tall without moving
+ * anything: the padding makes the target, the negative margin gives the space
+ * back to the layout. WCAG 2.5.8 asks for 24px, and the rail's 9px gaps put
+ * the untouched targets close enough together that the spacing exemption
+ * doesn't apply either.
+ */
 function NavItem({
   href,
   label,
@@ -88,9 +119,10 @@ function NavItem({
   return (
     <Link
       href={href}
+      aria-current={active ? "page" : undefined}
       className={cn(
-        "font-sans text-base font-bold text-ink transition-opacity duration-fast hover:opacity-100",
-        active ? "opacity-100" : "opacity-40",
+        "focus-ring -my-1.5 py-1.5 font-sans text-base font-bold text-ink transition-opacity duration-fast hover:opacity-100",
+        active ? "opacity-100" : "opacity-65",
         className,
       )}
     >
@@ -133,7 +165,14 @@ function NavGroup({
           {label}
         </Eyebrow>
       )}
-      <nav className={cn("flex flex-col gap-xs", end && "items-end")}>
+      {/* Named, because the site has two of these plus the mobile bar's and a
+          screen reader offered three unlabelled "navigation" landmarks has no
+          way to tell the filters from the pages. The name is the rail's own
+          eyebrow where there is one, so nothing new is invented for it. */}
+      <nav
+        aria-label={label ?? PAGE_NAV_LABEL}
+        className={cn("flex flex-col gap-xs", end && "items-end")}
+      >
         {items.map((item) => (
           <NavItem key={item.href + item.label} {...item} />
         ))}
@@ -196,11 +235,18 @@ export default function SiteNav({ settings }: { settings: SiteSettings }) {
 
   // Two rows rather than one dot-separated run: with the portfolio's longer
   // taxonomy a single row wraps and orphans the separator.
+  //
+  // A `nav` rather than a `div`, carrying the same name the rail's group has:
+  // the desktop chrome offered two named navigation landmarks and the mobile
+  // bar offered none, so the same two menus were jumpable on one and had to be
+  // found by reading on the other. Only one set is ever exposed — each is
+  // `display: none` at the other's width — so this adds no duplicate landmark.
   const barFilters = (activeParam: string | null) => {
     const rail = filterRailFor(settings, pathname, activeParam);
     if (!rail) return null;
     return (
-      <div
+      <nav
+        aria-label={rail.label}
         className={cn(
           "flex flex-wrap items-center gap-x-3 gap-y-1.5",
           filterFade,
@@ -209,17 +255,23 @@ export default function SiteNav({ settings }: { settings: SiteSettings }) {
         {rail.items.map((item) => (
           <NavItem key={item.href + item.label} {...item} className="text-md" />
         ))}
-      </div>
+      </nav>
     );
   };
 
   return (
     <>
       {/* ── Desktop: left rail (brand + filters) ─────────────────── */}
-      <aside className="fixed bottom-0 left-0 top-draft z-40 hidden w-rail flex-col bg-bone px-6 py-7 nav:flex">
+      <aside
+        aria-label="Studio"
+        className="fixed bottom-0 left-0 top-draft z-40 hidden w-rail flex-col bg-bone px-6 py-7 nav:flex"
+      >
+        {/* Hover goes to ink rather than fading the gold out. A 65% wordmark
+            was 1.83:1 against bone, and a state you can only reach by pointing
+            at it is still a state the text has to be readable in. */}
         <Link
           href="/"
-          className="font-serif text-display-xs font-medium text-gold transition-opacity hover:opacity-65"
+          className="focus-ring -my-1 self-start py-1 font-serif text-display-xs font-medium text-gold-ink transition-colors hover:text-ink"
         >
           {settings.name}
         </Link>
@@ -239,13 +291,19 @@ export default function SiteNav({ settings }: { settings: SiteSettings }) {
       </aside>
 
       {/* ── Desktop: right rail (pages) ──────────────────────────── */}
-      <aside className="fixed bottom-0 right-0 top-draft z-40 hidden w-rail-right flex-col justify-center bg-bone px-6 py-7 nav:flex">
+      <aside
+        aria-label="Site"
+        className="fixed bottom-0 right-0 top-draft z-40 hidden w-rail-right flex-col justify-center bg-bone px-6 py-7 nav:flex"
+      >
         <NavGroup items={pageItems} align="right" />
       </aside>
 
       {/* ── Mobile top bar ───────────────────────────────────────── */}
       <header className="fixed inset-x-0 top-draft z-40 flex flex-col gap-2xs border-b border-hairline bg-bone-veil px-5 py-3 backdrop-blur-sm nav:hidden">
-        <Link href="/" className="font-sans text-lg font-bold text-gold">
+        <Link
+          href="/"
+          className="focus-ring -my-1 self-start py-1 font-sans text-lg font-bold text-gold-ink"
+        >
           {settings.name}
         </Link>
         {hasFilters && (
@@ -253,11 +311,14 @@ export default function SiteNav({ settings }: { settings: SiteSettings }) {
             <LiveFilter>{barFilters}</LiveFilter>
           </Suspense>
         )}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <nav
+          aria-label={PAGE_NAV_LABEL}
+          className="flex flex-wrap items-center gap-x-3 gap-y-1.5"
+        >
           {pageItems.map((item) => (
             <NavItem key={item.href} {...item} className="text-md" />
           ))}
-        </div>
+        </nav>
       </header>
     </>
   );
