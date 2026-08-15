@@ -12,10 +12,17 @@
  *
  * ── The notation ───────────────────────────────────────────────────────────
  *
- *   #   a piece, one cell
- *   F   a piece, two cells by two — the feature; this marks its top-left
+ *   #   a piece, one cell, 4/5 portrait
+ *   s   a piece, one cell, square
+ *   t   a piece, one cell, tall (2:3)
+ *   w   a piece, one cell, landscape (4:3)
+ *   F   a piece, two cells by two, portrait — this marks its top-left
+ *   G   a piece, two cells by two, landscape — this marks its top-left
  *   +   a cell covered by the feature above/left of it
  *   .   a deliberately empty cell
+ *
+ * The ratios behind those letters are in `TILE_RATIOS` below, along with why
+ * varying them does not cost the lattice its alignment.
  *
  * Pieces are handed out in reading order, left to right and down, so the DOM
  * order of the tiles matches the catalogue's order (newest made first) and a
@@ -43,16 +50,34 @@
  * assuming it is fine.
  */
 
-/** Aspect ratio (width ÷ height) of the image in a cell, by token. */
+/**
+ * Aspect ratio (width ÷ height) of the image in a cell, by token.
+ *
+ * Four shapes rather than one. What makes that possible without the rows going
+ * ragged is that the *cell* is lattice-sized regardless — a row is always one
+ * column width divided by `--grid-ratio` — and the image inside it takes its
+ * own shape and sits at the top. A square tile simply leaves air beneath it; a
+ * tall one reaches a little into the vertical gap, which has a caption's worth
+ * of room in it. The rows line up either way, which is what keeps the voids
+ * reading as deliberate rather than as a layout that has come apart.
+ *
+ * They are shapes a jeweller's photograph actually wants: `t` for a piece shot
+ * standing, `w` for one lying down or held, `s` for a detail. Which shape a
+ * given piece lands in is the composition's decision, not the photograph's — so
+ * the crop is doing real work here, and the Studio's hotspot is what decides
+ * what survives it (see `ProductMedia.focus`). Set hotspots before judging this.
+ */
 const TILE_RATIOS: Record<string, number> = {
-  // One ratio for every tile, matching the product page's `aspect-[4/5]` so a
-  // piece does not change shape as you click through to it. The feature is the
-  // same ratio at double scale — 2 columns wide by 2 rows tall lands a hair
-  // wider than 4/5 once the gap between them is counted, which is what keeps
-  // the rows of a lattice full of different-sized things aligned.
-  "#": 0.8,
-  F: 0.8,
+  "#": 0.8, // 4/5 — the portrait the product page also uses
+  s: 1, // square — details, single stones
+  t: 2 / 3, // 2:3 — a piece shot standing
+  w: 4 / 3, // 4:3 — a piece lying down, or worn
+  F: 0.8, // feature, portrait
+  G: 1.25, // feature, landscape — the widest thing in the grid
 };
+
+/** Tokens that occupy two columns by two rows. */
+const FEATURE_TOKENS = new Set(["F", "G"]);
 
 export type GridSlot = {
   /** 0-based column of the slot's left edge. */
@@ -99,7 +124,7 @@ function pattern(cols: number, rows: readonly string[]): GridPattern {
     row.forEach((token, c) => {
       if (token === "." || token === "+") return;
 
-      const isFeature = token === "F";
+      const isFeature = FEATURE_TOKENS.has(token);
       const ratio = TILE_RATIOS[token];
       if (ratio === undefined) {
         throw new Error(
@@ -159,54 +184,54 @@ function pattern(cols: number, rows: readonly string[]): GridPattern {
  */
 const COLUMNS_2 = () => pattern(2, [
   "# .",
-  ". #",
+  ". s",
   "F +",
   "+ +",
-  "# .",
+  "t .",
   ". #",
-  "# #",
-  ". #",
-  "# #",
-  ". #",
+  "w s",
+  ". t",
+  "# w",
+  ". s",
 ]);
 
 /** Three columns — large phones in landscape, tablets, small laptops. */
 const COLUMNS_3 = () => pattern(3, [
-  "F + #",
+  "F + s",
   "+ + .",
-  "# . #",
-  ". # #",
-  "# # .",
-  "# F +",
+  "# . t",
+  ". w #",
+  "s # .",
+  "t G +",
   ". + +",
-  "# # #",
-  ". # .",
-  "# . #",
+  "# s #",
+  ". t .",
+  "w . #",
 ]);
 
 /** Four columns. */
 const COLUMNS_4 = () => pattern(4, [
-  "F + . #",
+  "F + . s",
   "+ + . .",
-  "# . # #",
-  "# # . .",
+  "# . t #",
+  "w s . .",
   ". # F +",
-  "# . + +",
-  "# # # .",
-  ". # . #",
-  "# . # #",
+  "t . + +",
+  "# w s .",
+  ". # . t",
+  "s . # w",
 ]);
 
 /** Five columns — the widest arrangement most desktops will see. */
 const COLUMNS_5 = () => pattern(5, [
-  "F + . # .",
+  "F + . s .",
   "+ + . . .",
-  "# . # # .",
-  ". # . # #",
-  "# # . F +",
-  ". # # + +",
-  "# . # # #",
-  "# # . . #",
+  "# . t # .",
+  ". w . # s",
+  "t # . G +",
+  ". s # + +",
+  "# . w # t",
+  "s # . . #",
 ]);
 
 /**
@@ -217,14 +242,14 @@ const COLUMNS_5 = () => pattern(5, [
  * reads as a missing image rather than as air.
  */
 const COLUMNS_6 = () => pattern(6, [
-  ". F + . # .",
+  ". F + . s .",
   ". + + . . .",
-  "# . # # . #",
-  "# # . # # .",
-  ". # # . F +",
-  "# . # # + +",
-  "# # # . # #",
-  ". # . # # .",
+  "# . t # . w",
+  "s # . # t .",
+  ". w # . F +",
+  "# . s # + +",
+  "t # w . # s",
+  ". # . t # .",
 ]);
 
 /**
