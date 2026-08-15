@@ -114,9 +114,16 @@ Three things about the grid are load-bearing:
 - **Tiles are positioned by `transform`**, not grid placement, because grid placement is not
   animatable and `transform` is.
 
-The grid is behind a **dynamic import** and its compositions are built **on first use**. Both are
-measured, not precautionary: statically imported, the column view paid the grid's download,
-parse and module-init on every visit to `/`, worth 6 points and 0.6s of LCP. See `perf/README.md`.
+Its compositions are built **on first use**, so importing the module costs nothing until a grid is
+drawn. Do **not** reach for `next/dynamic` here — it was tried and is actively harmful, because the
+grid can be what `/` prerenders: hydration has no chunk for it yet, renders the `loading` state, and
+the grid vanishes and comes back. The note in `catalogue-view.tsx` and `perf/README.md` have the
+measurements.
+
+When the grid is over budget, the lever is the **first row of the narrowest composition**. A void
+costs nothing and `loading="lazy"` buys nothing above the fold, so the opening row's tile count is
+what the opening viewport costs — the two-column composition deliberately does not open on a
+feature, because a feature spans both columns and is a full-bleed image on a phone.
 
 Adding a column count means adding it in three places that nothing links: the ladder in
 `globals.css`, a composition in `lib/grid-pattern.ts`, and the `sizes` steps in

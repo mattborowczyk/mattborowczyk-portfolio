@@ -1,32 +1,28 @@
-import dynamic from "next/dynamic";
-
+import CatalogueGrid from "@/components/catalogue-grid";
 import CatalogueRun from "@/components/catalogue-run";
 import { type ArchiveView, GRID_VIEW } from "@/lib/site";
 import { type Product } from "@/lib/products";
 
 /**
- * The grid, fetched only by a visitor who is actually looking at it.
+ * A note on `next/dynamic`, which this deliberately does **not** use.
  *
- * This is a measured decision, not a precaution. Imported statically, the grid
- * landed in the same client chunk as the run, so every visit to `/` in column
- * view downloaded it, parsed it, and ran its module initialisation — which
- * includes building all five compositions from their pictures in
- * `lib/grid-pattern.ts`. On a throttled phone that took the archive from 97 to
- * 91, TBT from 0 to 70ms and LCP from 2.7s to 3.4s: the whole cost of a feature
- * that route was not using.
+ * Code-splitting the grid looks obviously right — the column view has no need
+ * of it — and it was tried. It is actively harmful here, for a reason specific
+ * to this page: the arrangement can be what `/` prerenders, so the server sends
+ * the grid's markup, and then hydration has no chunk for it yet and renders the
+ * `loading` state instead. The grid vanishes and comes back a moment later. In
+ * a Lighthouse run that showed up as the whole page shifting (CLS 0.13 on a
+ * route that is otherwise 0) and as an LCP whose image had arrived in 69ms and
+ * then waited 2.6s to paint, because the element that finally counted was the
+ * second one, built after the chunk landed.
  *
- * `ssr` is left on. The default arrangement is a Site Settings field, so the
- * grid can be what a bare `/` prerenders — turning SSR off would make that
- * configuration ship an empty page to a crawler.
- *
- * What it costs is a chunk fetch on the first switch to the grid, during which
- * `loading` renders nothing. That is deliberate: a spinner for a local chunk
- * that arrives in a few frames is more disruptive than the gap, the outgoing
- * arrangement is dissolving over it, and every later switch is cached.
+ * The regression it was meant to solve turned out not to exist — it was
+ * measured against a stale server that had outlived its build. Statically
+ * imported, `/` measures better than `main` does. What is worth keeping from
+ * that detour is in `lib/grid-pattern.ts`: the compositions are built on first
+ * use rather than at module load, so importing this module costs nothing until
+ * a grid is actually drawn.
  */
-const CatalogueGrid = dynamic(() => import("@/components/catalogue-grid"), {
-  loading: () => null,
-});
 
 /**
  * The archive, in whichever arrangement is active.

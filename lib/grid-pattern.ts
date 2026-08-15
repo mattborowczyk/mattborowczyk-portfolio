@@ -142,22 +142,32 @@ function pattern(cols: number, rows: readonly string[]): GridPattern {
 /**
  * Two columns — phones, and the narrow half of a tablet.
  *
- * A feature spans the full width here, so the cycle opens on a single piece
- * with nothing beside it. That is the sparsest opening in the set and the one
- * that costs the least to paint, on the devices least able to afford it.
+ * The feature is deliberately **not** first here, and this is the one place the
+ * compositions are shaped by a measurement rather than by eye.
+ *
+ * A feature spans both columns, which at 375px means a full-bleed image: the
+ * largest element in the opening viewport, and therefore the LCP element on the
+ * device Lighthouse actually grades. Opening on it cost 0.3s of LCP against
+ * opening on a single half-width tile — for a composition that was no better,
+ * only bigger. The cycle now opens on one small piece with air around it and the
+ * feature arrives at the third row, still within the first scroll on most
+ * phones.
+ *
+ * The wider compositions keep their feature in the first row. There it is one
+ * element among several rather than the whole screen, and the arithmetic that
+ * makes it expensive here does not apply.
  */
 const COLUMNS_2 = () => pattern(2, [
+  "# .",
+  ". #",
   "F +",
   "+ +",
-  "# #",
-  ". #",
-  "# .",
-  "# #",
-  ". #",
-  "# #",
   "# .",
   ". #",
   "# #",
+  ". #",
+  "# #",
+  ". #",
 ]);
 
 /** Three columns — large phones in landscape, tablets, small laptops. */
