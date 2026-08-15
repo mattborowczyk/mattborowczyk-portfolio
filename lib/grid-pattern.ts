@@ -189,14 +189,14 @@ const COLUMNS_3 = () => pattern(3, [
  * the band rule below to read as a band rather than as a leftover.
  */
 const COLUMNS_4 = () => pattern(4, [
-  "# . # .",
+  "# . # #", // 1x11
   "# . F +",
   ". . + +",
-  "# . . #",
+  "# # # .", // 111x
   "F + . #",
   "+ + . .",
-  ". # # .",
-  "# . # #",
+  "# . . #", // 1xx1
+  "# # . #", // 11x1
 ]);
 
 /**
@@ -215,16 +215,34 @@ const COLUMNS_4 = () => pattern(4, [
  *
  * Read as pictures, the two band forms at this width are `SSxBB` over `xxxBB`,
  * and `BBxxx` over `BBxSS`.
+ *
+ * ── The row vocabulary ─────────────────────────────────────────────────────
+ *
+ * Rows that hold nothing but small pieces are not improvised. They cycle
+ * through a fixed set, one per cycle, so the composition repeats as a rhythm
+ * rather than as an assortment:
+ *
+ *     1x11x    111x1    1xx11    11xx1
+ *
+ * Four templates against four small-only rows means each appears exactly once
+ * per cycle, and the cycle is what repeats down a long catalogue.
+ *
+ * Those four are the vocabulary **at five columns**. The four- and six-column
+ * compositions below use the same set narrowed and widened by one, which keeps
+ * the family recognisable across the ladder — but that narrowing is a
+ * derivation, not a decision, and is the obvious thing to replace once the
+ * other widths have been looked at properly. Two and three columns have no
+ * vocabulary of their own yet for the same reason.
  */
 const COLUMNS_5 = () => pattern(5, [
-  "# . # . #",
+  "# . # # .", // 1x11x
   "# # . F +",
   ". . . + +",
-  "# . # . #",
+  "# # # . #", // 111x1
   "F + . . .",
   "+ + . # #",
-  ". # . # .",
-  "# . # # .",
+  "# . . # #", // 1xx11
+  "# # . . #", // 11xx1
 ]);
 
 /**
@@ -235,14 +253,14 @@ const COLUMNS_5 = () => pattern(5, [
  * over `xSSxBB`, and `BBxxxS` over `BBxSSx`.
  */
 const COLUMNS_6 = () => pattern(6, [
-  "# . # . # .",
+  "# . # # . #", // 1x11x1
   "# . . . F +",
   ". # # . + +",
-  "# . # . # .",
+  "# # # . # #", // 111x11
   "F + . . . #",
   "+ + . # # .",
-  ". # . # . #",
-  "# . # . # .",
+  "# . . # # .", // 1xx11x
+  "# # . . # #", // 11xx11
 ]);
 
 /**
