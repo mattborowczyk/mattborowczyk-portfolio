@@ -80,15 +80,61 @@ published path. Entry point is the Presentation tool in the Studio, not a hand-r
   `VisualEditing` mount only in draft mode; the coming-soon curtain is lifted there.
 
 Stega stays **off**. It hides invisible characters inside every string, and the site compares CMS strings for
-equality (category filter, link `actionType`, pricing tab keys) — turning it on means auditing those first.
+equality (category filter, link `actionType`, pricing tab keys, `defaultArchiveView`) — turning it on means
+auditing those first.
+
+### The archive's two views
+
+`/` renders the same pieces in one of two arrangements, carried in `?view=`.
+
+- **Column** (`components/catalogue-run.tsx`) — the run. One ordered column; filtering
+  *shrinks* non-matching pieces in place rather than removing them, so the run is one
+  sequence at every filter.
+- **Grid** (`components/catalogue-grid.tsx`) — a lattice with deliberate holes. Filtering
+  removes and reflows; survivors travel into the gaps.
+
+Which one a bare `/` renders is `settings.defaultArchiveView`, so it flips without a deploy.
+**The default view is always the one carrying no param** (`viewHref` in `lib/site.ts`) — that
+is what keeps one canonical address per state whichever way the setting points, and `/` sets a
+static `alternates.canonical` because otherwise every `?filter=`/`?view=` pair is separately
+crawlable.
+
+Three things about the grid are load-bearing:
+
+- **Compositions are data**, in `lib/grid-pattern.ts`, written as pictures (`#` a piece, `F` a
+  2×2 feature, `+` its footprint, `.` a deliberate void) — one per column count, because a
+  composition that reads at five columns is not the same one at two. A malformed picture throws
+  at parse time, so a typo fails the build rather than shipping overlapping tiles.
+- **Sized by container query, not viewport.** The rails take a fixed 358px, so a viewport
+  breakpoint is wrong by a whole column. `.grid-frame` declares the containment and
+  `.piece-grid` inside it does the asking — an element cannot query itself. Each tile carries
+  its slot for all five column counts as inline custom properties and the queries pick one; the
+  alternative is measuring in JS, which cannot run during a prerender, so the server would guess
+  and hydration would correct it — a layout shift on the route whose CLS budget is 0.
+- **Tiles are positioned by `transform`**, not grid placement, because grid placement is not
+  animatable and `transform` is.
+
+The grid is behind a **dynamic import** and its compositions are built **on first use**. Both are
+measured, not precautionary: statically imported, the column view paid the grid's download,
+parse and module-init on every visit to `/`, worth 6 points and 0.6s of LCP. See `perf/README.md`.
+
+Adding a column count means adding it in three places that nothing links: the ladder in
+`globals.css`, a composition in `lib/grid-pattern.ts`, and the `sizes` steps in
+`catalogue-grid.tsx` — the last is answered in viewport units while the grid is measured in
+container units, so the two describe the same ladder in different languages and a mismatch is
+invisible on screen.
 
 ### Ordering and media
 
 - The catalogue run is ordered by `made` (the ISO date the piece was finished), **newest first** — not
   `_createdAt`, not array order. GROQ sorts it, and `byMadeDesc` in `fetch-data.ts` re-applies the same rule
   so the seed obeys it too. Lexicographic compare on ISO strings, intentionally not `localeCompare`.
-- `productMedia()` resolves media to `ProductMedia` objects (`url` + `kind` + `animated`) before it
-  reaches components, so no component handles an asset ref. Anything animated
+- `productMedia()` resolves media to `ProductMedia` objects (`url` + `kind` + `animated` + `focus`)
+  before it reaches components, so no component handles an asset ref. `focus` is the editor's
+  hotspot as fractions, for `object-position`: a still resolves to one derivative at the asset's
+  own ratio, so the hotspot has no target ratio to crop against and every frame then crops it
+  with `object-cover`, which crops from the centre. Without `focus` the Studio's hotspot control
+  did nothing at all — in the run as much as in the grid. Anything animated
   (video, GIF — detected by `_type === "file"` or mime) bypasses the image pipeline and the Next optimiser,
   because the pipeline flattens GIFs to one frame. Stills go through `urlFor(...)` as a **full image object**
   (asset ref + hotspot + crop), not a bare asset id, or the Studio's crop is silently ignored.
@@ -111,6 +157,7 @@ Four rules, each of which was a measured regression before it was a rule. `pnpm 
   nothing else. And the catalogue's hover overlay mounts only behind `(hover: hover) and
   (pointer: fine)`, so a phone doesn't fetch a second full-size image per piece for a state it has no
   way to reach.
+- **A view that is not on screen must not be on the main thread.** See the dynamic import above.
 - **Font weights are declared in `app/layout.tsx` and cost differently per family.** Cormorant is
   variable, so its weights share one file; Plex Mono is static instances, one preloaded file each.
   Only 400/500 Cormorant and 400 Plex Mono are declared, because that is all the site sets. Adding a
@@ -119,6 +166,11 @@ Four rules, each of which was a measured regression before it was a rule. `pnpm 
 
 ### Routing
 
+- The rail offers only categories that **have pieces** (`usedCategories`, applied inside `getSettings`
+  so every consumer sees one answer). Site Settings keeps the full taxonomy — that is the editing
+  vocabulary the Studio validates against. This is what makes the grid's empty state unreachable rather
+  than merely handled: `resolveFilter` validates against the narrowed list, so `?filter=Earrings`
+  collapses to "All pieces" like any unknown filter.
 - `app/(portfolio)/` — public site, wrapped by `AppShell` (client component) which picks the frame by
   pathname: `/links` bare, everything else (including `/product/*`) rails/top-bar + footer.
 - `app/(studio)/admin/[[...tool]]` — the embedded Studio. Separate route group, so it is **not** behind the

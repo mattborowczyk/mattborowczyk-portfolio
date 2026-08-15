@@ -11,8 +11,8 @@ import {
   usePageLeavingHref,
 } from "@/components/page-transition";
 import {
-  GRID_PATTERNS,
   type GridPlacement,
+  gridPatterns,
   placement,
   rowCount,
 } from "@/lib/grid-pattern";
@@ -336,6 +336,9 @@ export default function CatalogueGrid({
   const leavingTo = targetRef(usePageLeavingHref());
 
   const isAll = filter === ALL_PIECES;
+
+  // Built once, on first render of the first grid — see `gridPatterns`.
+  const GRID_PATTERNS = gridPatterns();
 
   // Tone assignment keys off a piece's position in the whole catalogue, so it
   // is the same colour in the grid as in the run and does not change when a

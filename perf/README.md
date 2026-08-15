@@ -12,8 +12,28 @@ simulated Slow 4G):
 | route             | perf | FCP   | LCP   | TBT   | CLS | transfer |
 | ----------------- | ---- | ----- | ----- | ----- | --- | -------- |
 | `/`               | 96   | 0.8 s | 2.8 s | 40 ms | 0   | 377 KiB  |
+| `/?view=grid`     | 95   | —     | 3.0 s | 0 ms  | 0   | —        |
 | `/product/[ref]`  | 96   | 0.8 s | 2.8 s | 30 ms | 0   | 304 KiB  |
 | `/course`         | 97   | 0.8 s | 2.6 s | 60 ms | 0   | 276 KiB  |
+
+`/?view=grid` is the archive's other arrangement, added 2026-08-15 and measured
+then. It is audited because Site Settings decides which of the two a bare `/`
+renders, without a deploy — so the one that is *not* the default can drift over
+budget and nothing would say so, and which one that is can change between two
+runs of the same commit.
+
+**It passes with no headroom worth the name: 3.0 s against a 3000 ms line.** The
+grid puts a feature tile and its neighbours in the opening viewport where the
+run puts one piece, and `loading="lazy"` does nothing for any of them, so this
+is the route to check first after any change to the compositions in
+`lib/grid-pattern.ts` — particularly one that fills the first row. The
+compositions open sparse for exactly this reason.
+
+Two things already paid for that headroom and should not be undone. The grid is
+behind a dynamic import (`components/catalogue-view.tsx`) so the column view
+never downloads it, and the compositions are built on first use rather than at
+module load (`gridPatterns()`). Together they were worth 6 points, 70 ms of TBT
+and 0.6 s of LCP **on `/`** — a route that was not even showing the grid.
 
 Repeated runs land within about two points of those scores and ±0.3 s of the
 LCP, so treat a single run's difference as noise and a five-point drop as real.

@@ -1,7 +1,32 @@
-import CatalogueGrid from "@/components/catalogue-grid";
+import dynamic from "next/dynamic";
+
 import CatalogueRun from "@/components/catalogue-run";
 import { type ArchiveView, GRID_VIEW } from "@/lib/site";
 import { type Product } from "@/lib/products";
+
+/**
+ * The grid, fetched only by a visitor who is actually looking at it.
+ *
+ * This is a measured decision, not a precaution. Imported statically, the grid
+ * landed in the same client chunk as the run, so every visit to `/` in column
+ * view downloaded it, parsed it, and ran its module initialisation — which
+ * includes building all five compositions from their pictures in
+ * `lib/grid-pattern.ts`. On a throttled phone that took the archive from 97 to
+ * 91, TBT from 0 to 70ms and LCP from 2.7s to 3.4s: the whole cost of a feature
+ * that route was not using.
+ *
+ * `ssr` is left on. The default arrangement is a Site Settings field, so the
+ * grid can be what a bare `/` prerenders — turning SSR off would make that
+ * configuration ship an empty page to a crawler.
+ *
+ * What it costs is a chunk fetch on the first switch to the grid, during which
+ * `loading` renders nothing. That is deliberate: a spinner for a local chunk
+ * that arrives in a few frames is more disruptive than the gap, the outgoing
+ * arrangement is dissolving over it, and every later switch is cached.
+ */
+const CatalogueGrid = dynamic(() => import("@/components/catalogue-grid"), {
+  loading: () => null,
+});
 
 /**
  * The archive, in whichever arrangement is active.

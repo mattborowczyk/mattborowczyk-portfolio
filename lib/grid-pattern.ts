@@ -146,7 +146,7 @@ function pattern(cols: number, rows: readonly string[]): GridPattern {
  * with nothing beside it. That is the sparsest opening in the set and the one
  * that costs the least to paint, on the devices least able to afford it.
  */
-const COLUMNS_2 = pattern(2, [
+const COLUMNS_2 = () => pattern(2, [
   "F +",
   "+ +",
   "# #",
@@ -161,7 +161,7 @@ const COLUMNS_2 = pattern(2, [
 ]);
 
 /** Three columns — large phones in landscape, tablets, small laptops. */
-const COLUMNS_3 = pattern(3, [
+const COLUMNS_3 = () => pattern(3, [
   "F + #",
   "+ + .",
   "# . #",
@@ -175,7 +175,7 @@ const COLUMNS_3 = pattern(3, [
 ]);
 
 /** Four columns. */
-const COLUMNS_4 = pattern(4, [
+const COLUMNS_4 = () => pattern(4, [
   "F + . #",
   "+ + . .",
   "# . # #",
@@ -188,7 +188,7 @@ const COLUMNS_4 = pattern(4, [
 ]);
 
 /** Five columns — the widest arrangement most desktops will see. */
-const COLUMNS_5 = pattern(5, [
+const COLUMNS_5 = () => pattern(5, [
   "F + . # .",
   "+ + . . .",
   "# . # # .",
@@ -206,7 +206,7 @@ const COLUMNS_5 = pattern(5, [
  * feature in the first column leaves a very long empty run to its right, which
  * reads as a missing image rather than as air.
  */
-const COLUMNS_6 = pattern(6, [
+const COLUMNS_6 = () => pattern(6, [
   ". F + . # .",
   ". + + . . .",
   "# . # # . #",
@@ -218,20 +218,27 @@ const COLUMNS_6 = pattern(6, [
 ]);
 
 /**
- * Every composition, by column count.
+ * Every composition, by column count, built on first use.
  *
- * The keys are the ladder from `globals.css`: 2 / 3 / 4 / 5 / 6, chosen so a
+ * The order is the ladder from `globals.css`: 2 / 3 / 4 / 5 / 6, chosen so a
  * tile stays in a 190–290px band at every step. The container queries there and
  * the entries here have to stay in step — a breakpoint added in one place and
  * not the other leaves a width with no composition to draw.
+ *
+ * Built lazily rather than at module load, which is a performance decision and
+ * not a style. Parsing five pictures means splitting and validating some sixty
+ * rows, and as a module-level constant that ran on import — on the main thread,
+ * during hydration, for anyone who happened to pull this module in. The grid is
+ * already behind a dynamic import for the same reason; this is the half of the
+ * cost that a code-split alone would not have moved, since a chunk that is
+ * fetched is a chunk that is also initialised.
  */
-export const GRID_PATTERNS: readonly GridPattern[] = [
-  COLUMNS_2,
-  COLUMNS_3,
-  COLUMNS_4,
-  COLUMNS_5,
-  COLUMNS_6,
-];
+let patterns: readonly GridPattern[] | null = null;
+
+export function gridPatterns(): readonly GridPattern[] {
+  patterns ??= [COLUMNS_2(), COLUMNS_3(), COLUMNS_4(), COLUMNS_5(), COLUMNS_6()];
+  return patterns;
+}
 
 /** One piece's placement within a given composition. */
 export type GridPlacement = GridSlot;
