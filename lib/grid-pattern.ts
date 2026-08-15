@@ -1,0 +1,267 @@
+/**
+ * The composed grid: where each piece lands, how large it is, and which cells
+ * are deliberately left empty.
+ *
+ * This file is *data*, and that is the point of it. The arrangement is a design
+ * decision, not an arrangement algorithm's opinion, so it is written out as
+ * something you can read as a picture and edit by eye — one composition per
+ * column count, because a composition that reads well at five columns is not
+ * the same composition at two. Squeezing the wide one down produces a layout
+ * whose gaps are an accident of wrapping, which is precisely what a deliberate
+ * void is not.
+ *
+ * ── The notation ───────────────────────────────────────────────────────────
+ *
+ *   #   a piece, one cell
+ *   F   a piece, two cells by two — the feature; this marks its top-left
+ *   +   a cell covered by the feature above/left of it
+ *   .   a deliberately empty cell
+ *
+ * Pieces are handed out in reading order, left to right and down, so the DOM
+ * order of the tiles matches the catalogue's order (newest made first) and a
+ * screen reader or a Tab key walks the grid in the same order the run would
+ * present it. A 2×2 feature can put a piece visually below one that follows it
+ * in the DOM; that is the one place the two orders come apart, and it is worth
+ * far less than keeping the reading order truthful.
+ *
+ * Each pattern is a *cycle*. With more pieces than slots it repeats, offset by
+ * its own height, so the arrangement continues rather than stopping. Cycles are
+ * sized around 16–24 slots and deliberately differ in length between column
+ * counts, so even at a catalogue large enough to repeat, the repeat lands in a
+ * different place at every width.
+ *
+ * ── Why the first row is nearly empty ──────────────────────────────────────
+ *
+ * `loading="lazy"` does nothing for a tile above the fold — it defers what is
+ * below it, and these are not. So the opening row's *tile count* is what the
+ * opening viewport costs, and a void costs nothing at all. Every cycle here
+ * opens on one feature plus at most one small piece: it is the most striking
+ * composition of the four we looked at and also the cheapest to paint, which is
+ * a rare direction for those two to point.
+ *
+ * Changing that means re-running `pnpm perf` against `/?view=grid`, not
+ * assuming it is fine.
+ */
+
+/** Aspect ratio (width ÷ height) of the image in a cell, by token. */
+const TILE_RATIOS: Record<string, number> = {
+  // One ratio for every tile, matching the product page's `aspect-[4/5]` so a
+  // piece does not change shape as you click through to it. The feature is the
+  // same ratio at double scale — 2 columns wide by 2 rows tall lands a hair
+  // wider than 4/5 once the gap between them is counted, which is what keeps
+  // the rows of a lattice full of different-sized things aligned.
+  "#": 0.8,
+  F: 0.8,
+};
+
+export type GridSlot = {
+  /** 0-based column of the slot's left edge. */
+  col: number;
+  /** 0-based row of the slot's top edge, within the cycle. */
+  row: number;
+  colSpan: 1 | 2;
+  rowSpan: 1 | 2;
+  /** Width ÷ height of the image drawn in this slot. */
+  ratio: number;
+};
+
+export type GridPattern = {
+  cols: number;
+  /** Height of one cycle, in rows. */
+  rows: number;
+  slots: GridSlot[];
+};
+
+/**
+ * Parse one composition from its picture.
+ *
+ * Validation throws rather than warning, and does so at module load — which
+ * means a malformed pattern fails the build instead of shipping a grid with
+ * tiles stacked on top of each other. A pattern is edited by hand and by eye;
+ * the failure mode it needs protecting from is a typo, and a typo should be
+ * loud.
+ */
+function pattern(cols: number, rows: readonly string[]): GridPattern {
+  const cells = rows.map((row) => row.split(/\s+/).filter(Boolean));
+
+  cells.forEach((row, r) => {
+    if (row.length !== cols) {
+      throw new Error(
+        `grid pattern (${cols} columns): row ${r} has ${row.length} cells, expected ${cols}`,
+      );
+    }
+  });
+
+  const at = (r: number, c: number) => cells[r]?.[c];
+  const slots: GridSlot[] = [];
+
+  cells.forEach((row, r) => {
+    row.forEach((token, c) => {
+      if (token === "." || token === "+") return;
+
+      const isFeature = token === "F";
+      const ratio = TILE_RATIOS[token];
+      if (ratio === undefined) {
+        throw new Error(
+          `grid pattern (${cols} columns): unknown token "${token}" at row ${r}, column ${c}`,
+        );
+      }
+
+      if (isFeature) {
+        // The three covered cells have to be spelled out rather than inferred.
+        // Writing them keeps the picture honest — you can see the feature's
+        // footprint in the text — and it is what catches a feature placed where
+        // another piece already is, or one hanging off the right edge.
+        const covered: [number, number][] = [
+          [r, c + 1],
+          [r + 1, c],
+          [r + 1, c + 1],
+        ];
+        for (const [cr, cc] of covered) {
+          if (at(cr, cc) !== "+") {
+            throw new Error(
+              `grid pattern (${cols} columns): feature at row ${r}, column ${c} needs "+" at row ${cr}, column ${cc} (found ${at(cr, cc) ?? "nothing"})`,
+            );
+          }
+        }
+      }
+
+      slots.push({
+        col: c,
+        row: r,
+        colSpan: isFeature ? 2 : 1,
+        rowSpan: isFeature ? 2 : 1,
+        ratio,
+      });
+    });
+  });
+
+  return { cols, rows: cells.length, slots };
+}
+
+/**
+ * Two columns — phones, and the narrow half of a tablet.
+ *
+ * A feature spans the full width here, so the cycle opens on a single piece
+ * with nothing beside it. That is the sparsest opening in the set and the one
+ * that costs the least to paint, on the devices least able to afford it.
+ */
+const COLUMNS_2 = pattern(2, [
+  "F +",
+  "+ +",
+  "# #",
+  ". #",
+  "# .",
+  "# #",
+  ". #",
+  "# #",
+  "# .",
+  ". #",
+  "# #",
+]);
+
+/** Three columns — large phones in landscape, tablets, small laptops. */
+const COLUMNS_3 = pattern(3, [
+  "F + #",
+  "+ + .",
+  "# . #",
+  ". # #",
+  "# # .",
+  "# F +",
+  ". + +",
+  "# # #",
+  ". # .",
+  "# . #",
+]);
+
+/** Four columns. */
+const COLUMNS_4 = pattern(4, [
+  "F + . #",
+  "+ + . .",
+  "# . # #",
+  "# # . .",
+  ". # F +",
+  "# . + +",
+  "# # # .",
+  ". # . #",
+  "# . # #",
+]);
+
+/** Five columns — the widest arrangement most desktops will see. */
+const COLUMNS_5 = pattern(5, [
+  "F + . # .",
+  "+ + . . .",
+  "# . # # .",
+  ". # . # #",
+  "# # . F +",
+  ". # # + +",
+  "# . # # #",
+  "# # . . #",
+]);
+
+/**
+ * Six columns — the last step before the grid stops widening and centres.
+ *
+ * The feature opens off the left edge here rather than on it. At this width a
+ * feature in the first column leaves a very long empty run to its right, which
+ * reads as a missing image rather than as air.
+ */
+const COLUMNS_6 = pattern(6, [
+  ". F + . # .",
+  ". + + . . .",
+  "# . # # . #",
+  "# # . # # .",
+  ". # # . F +",
+  "# . # # + +",
+  "# # # . # #",
+  ". # . # # .",
+]);
+
+/**
+ * Every composition, by column count.
+ *
+ * The keys are the ladder from `globals.css`: 2 / 3 / 4 / 5 / 6, chosen so a
+ * tile stays in a 190–290px band at every step. The container queries there and
+ * the entries here have to stay in step — a breakpoint added in one place and
+ * not the other leaves a width with no composition to draw.
+ */
+export const GRID_PATTERNS: readonly GridPattern[] = [
+  COLUMNS_2,
+  COLUMNS_3,
+  COLUMNS_4,
+  COLUMNS_5,
+  COLUMNS_6,
+];
+
+/** One piece's placement within a given composition. */
+export type GridPlacement = GridSlot;
+
+/**
+ * Where the `index`-th piece sits in `pattern`.
+ *
+ * Past the end of the cycle the composition repeats, pushed down by its own
+ * height — so the arrangement continues with the same rhythm rather than
+ * running out.
+ */
+export function placement(pattern: GridPattern, index: number): GridPlacement {
+  const { slots, rows } = pattern;
+  const slot = slots[index % slots.length];
+  const cycle = Math.floor(index / slots.length);
+  return { ...slot, row: slot.row + cycle * rows };
+}
+
+/**
+ * How many rows `count` pieces occupy in this composition.
+ *
+ * Taken from the placements rather than from the arithmetic, because the last
+ * cycle is usually partial and a feature in it is two rows tall: the tallest
+ * piece placed decides the height, not the last one.
+ */
+export function rowCount(pattern: GridPattern, count: number): number {
+  let rows = 0;
+  for (let i = 0; i < count; i++) {
+    const slot = placement(pattern, i);
+    rows = Math.max(rows, slot.row + slot.rowSpan);
+  }
+  return rows;
+}

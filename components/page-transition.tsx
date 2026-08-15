@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { cn } from "@/lib/utils";
@@ -29,8 +36,19 @@ const PAGE_FADE_MS = 500;
  */
 const MEDIA_WAIT_CAP_MS = 500;
 
-/** True from the moment a navigation is committed to until the new route lands. */
-const LeavingContext = createContext(false);
+/**
+ * The navigation in flight: true from the moment one is committed to until the
+ * new route lands, alongside where it is going.
+ *
+ * The destination is published as well as the fact, because the grid needs it.
+ * Its exit is not a single fade — the tile you clicked stays while the others
+ * leave around it — and "which tile did they click" is a question only the
+ * href can answer, since the click itself was taken by the document listener
+ * below rather than by anything inside the grid.
+ */
+const LeavingContext = createContext<{ leaving: boolean; href: string | null }>(
+  { leaving: false, href: null },
+);
 
 /**
  * Set just before a router push and read by the `PageFade` that arrives after
@@ -70,7 +88,49 @@ let pageHasMounted = false;
 
 /** Whether a route change is currently fading the page out. */
 export function usePageLeaving() {
-  return useContext(LeavingContext);
+  return useContext(LeavingContext).leaving;
+}
+
+/**
+ * The path a route change in flight is heading to, or `null` when none is.
+ * Pathname only — the destinations this is used to recognise never carry a
+ * query, and comparing one that did against a bare path would silently miss.
+ */
+export function usePageLeavingHref() {
+  return useContext(LeavingContext).href;
+}
+
+/**
+ * Set by the in-place branch below when a click changes `?view=`, and read once
+ * by the arrangement that click mounts.
+ *
+ * The archive's two views stagger their contents in when you switch between
+ * them, and must not do so on a cold load — there the stagger would be the only
+ * thing standing between the largest tile and the paint, pushing LCP out by its
+ * own duration on the route whose budget is tightest.
+ *
+ * Deriving that from `pageHasMounted` was the obvious thing and was wrong twice
+ * over. It is read during render, and the arrangement sits *inside* the page's
+ * Suspense boundary — so the server renders it with the flag still false while
+ * the client does not reach it until `PageFade` has mounted and set the flag
+ * true, which is a hydration mismatch on every tile. And it answers the wrong
+ * question: "has anything been mounted before" is not "did the visitor just ask
+ * for a different arrangement".
+ *
+ * A click is. Nothing sets this on the server, and nothing has clicked anything
+ * during hydration, so both sides agree by construction; it can only ever
+ * become true on a mount that no server render is paired with.
+ *
+ * Consumed rather than merely read: the flag describes one transition, and a
+ * second view mounted later (a filter change re-running the tree, say) has no
+ * claim on it.
+ */
+let viewJustChanged = false;
+
+export function consumeViewChange() {
+  const changed = viewJustChanged;
+  viewJustChanged = false;
+  return changed;
 }
 
 /** Whether the visitor has asked for less motion. */
@@ -190,6 +250,9 @@ export function PageTransitionProvider({
   const router = useRouter();
   const pathname = usePathname();
   const [leaving, setLeaving] = useState(false);
+  // Kept beside `leaving` rather than folded into it, so the many places that
+  // only care whether a navigation is happening are unchanged.
+  const [leavingHref, setLeavingHref] = useState<string | null>(null);
   // Guards a second click while a fade is already running: the first has taken
   // the navigation and a second would stack another timer behind it.
   const navigating = useRef(false);
@@ -201,6 +264,7 @@ export function PageTransitionProvider({
   useEffect(() => {
     navigating.current = false;
     setLeaving(false);
+    setLeavingHref(null);
 
     return () => {
       // Only ever non-null if the timer has not fired, because the callback
@@ -267,6 +331,35 @@ export function PageTransitionProvider({
         }
         navigating.current = false;
         setLeaving(false);
+        setLeavingHref(null);
+
+        // Two in-place changes, and they want opposite things from the scroll.
+        //
+        // A filter must not move it. The pieces being filtered are exactly what
+        // you were looking at, and jumping to the top to tell you the list got
+        // shorter is the behaviour this branch was written to stop.
+        //
+        // A view change must. The archive and the grid differ in height by
+        // roughly ten to one — the same eleven pieces are three hundred rem of
+        // run and thirty of grid — so there is no position to preserve, and
+        // keeping the offset lands you clamped to the bottom of a page you were
+        // not at the bottom of. Done here, instantly, while the outgoing
+        // arrangement is still dissolving and there is nothing on screen to see
+        // it happen: the same trick the route branch below uses, and for the
+        // same reason. `scroll: false` either way, because Next's own reset
+        // runs *after* the new view has painted and `scroll-behavior: smooth`
+        // is set globally, which would animate it in full view.
+        const changesView =
+          new URL(location.href).searchParams.get("view") !==
+          inPlace.searchParams.get("view");
+        if (changesView) {
+          window.scrollTo({ top: 0, behavior: "instant" });
+          // Read by whichever arrangement this click is about to mount — see
+          // `consumeViewChange`. Set here rather than inferred there because
+          // this is the only place that knows a *view* changed, as opposed to
+          // a filter, a route, or a re-render.
+          viewJustChanged = true;
+        }
 
         // Hash included: nothing on the site pairs one with a query today, but
         // the route branch below preserves it and a silent difference between
@@ -305,6 +398,7 @@ export function PageTransitionProvider({
       router.prefetch(url.pathname + url.search);
       arrivedByNavigation = true;
       setLeaving(true);
+      setLeavingHref(url.pathname);
 
       pendingNavigation.current = window.setTimeout(() => {
         // Cleared before the push, not after: from here the navigation is
@@ -338,8 +432,16 @@ export function PageTransitionProvider({
     };
   }, [router]);
 
+  // Memoised: this object is the context value, and a fresh one every render
+  // would re-render every consumer on every parent render — which here means
+  // every tile in the grid, on a page that is otherwise entirely static.
+  const state = useMemo(
+    () => ({ leaving, href: leavingHref }),
+    [leaving, leavingHref],
+  );
+
   return (
-    <LeavingContext.Provider value={leaving}>{children}</LeavingContext.Provider>
+    <LeavingContext.Provider value={state}>{children}</LeavingContext.Provider>
   );
 }
 

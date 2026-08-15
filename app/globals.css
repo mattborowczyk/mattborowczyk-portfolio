@@ -187,6 +187,29 @@
     --hover-card-overlap: 2.5rem;
     --topbar-height: 7.25rem; /* 116px — mobile bar + breathing room */
 
+    /* ── Catalogue grid ────────────────────────────────────────────────
+       The composed lattice at `/?view=grid`. Compositions live in
+       lib/grid-pattern.ts; these are the measurements they are drawn at.
+
+       `--grid-ratio` is the *lattice's* ratio, not any one tile's: it sets how
+       tall a row is, so every row lines up whatever ratio the pieces in it
+       happen to be. 0.8 matches the product page's `aspect-[4/5]`, so a piece
+       does not change shape as you click through to it.
+
+       The two gaps are deliberately far apart. The horizontal one is the gap
+       between two images; the vertical one has to hold a caption as well —
+       name, reference and price, up to two lines of name — and then leave
+       enough air that a caption reads as belonging to the piece above it
+       rather than floating between two rows. Sized so the last row's caption
+       has the same room as any other; see `height` on `.piece-grid`. */
+    --grid-ratio: 0.8;
+    --grid-gap: clamp(0.75rem, 1.6vw, 1.375rem); /* 12 → 22px */
+    --grid-gap-y: clamp(4.5rem, 7vw, 9.5rem); /* 72 → 152px */
+    /* Where the ladder stops. Six columns at this width are ~280px each, which
+       is the bottom of the band a tile stays legible in; a seventh column past
+       here would make every piece a thumbnail, so the grid centres instead. */
+    --grid-max: 112rem; /* 1792px */
+
     /* ── Draft banner ──────────────────────────────────────────────────
        The banner is fixed across the top, so it would sit over the nav
        rails and the mobile top bar — all of which are themselves fixed at
@@ -280,5 +303,174 @@
       rgba(40, 40, 35, 0.05) 0 1px,
       transparent 1px 14px
     );
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     CATALOGUE GRID
+     ───────────────────────────────────────────────────────────────────
+     Real CSS rather than utilities, for three reasons that are all the
+     same reason: none of this can be expressed as a class.
+
+     It is sized by **container query, not viewport**. The viewport is the
+     wrong ruler here — above the `nav` breakpoint the two rails take a
+     fixed 358px out of it, so a 1200px window gives the grid barely 800px
+     and a viewport breakpoint at 1200px would be wrong by a whole column.
+     It would go wrong again the day a rail changes width, and again inside
+     the Studio's Presentation iframe. Asking the grid how wide *it* is can
+     only ever be right.
+
+     Note the wrapper. An element cannot query itself, so `.grid-frame`
+     declares the containment and `.piece-grid` inside it does the asking.
+     `cqw` on the tiles resolves against the frame, and the grid is 100% of
+     the frame, so the two are interchangeable.
+
+     Tiles are positioned by `transform`, not by grid placement. Grid
+     placement is not animatable and `transform` is, which is what lets a
+     filter change move the survivors into the gaps rather than cutting to
+     the new arrangement.
+
+     Every tile carries its position for all five column counts as inline
+     custom properties, and the queries below choose which set is live. It
+     is verbose in the markup and it is what keeps the whole thing static:
+     the alternative is measuring the container in JS, which cannot run
+     during a prerender, so the server would guess a column count and
+     hydration would correct it — a layout shift on the one route whose CLS
+     budget is 0.
+     ═══════════════════════════════════════════════════════════════════ */
+
+  .grid-frame {
+    container-type: inline-size;
+    max-width: var(--grid-max);
+    margin-inline: auto;
+    width: 100%;
+  }
+
+  .piece-grid {
+    position: relative;
+    width: 100%;
+    /* The 2-column base. Each query below overrides all three together —
+       column count, row count and the per-tile placement set — because a
+       count from one breakpoint with placements from another is a pile-up. */
+    --cols: 2;
+    --rows: var(--grid-rows-2);
+    --col: calc(
+      (100cqw - (var(--cols) - 1) * var(--grid-gap)) / var(--cols)
+    );
+    --row: calc(var(--col) / var(--grid-ratio));
+    /* A trailing vertical gap rather than `(rows - 1)`: the last row's
+       caption hangs below its image like every other, and without the extra
+       row of space it would hang out of the grid and into the footer. */
+    height: calc(var(--rows) * (var(--row) + var(--grid-gap-y)));
+    /* A piece filtered out of the grid keeps its last position while it fades,
+       and that position can sit below the shorter arrangement it is leaving —
+       an invisible tile is still scrollable overflow, so without this the page
+       would grow a stretch of empty scroll after a filter. `clip` rather than
+       `hidden` because `hidden` makes a scroll container, which would trap the
+       page's own scrolling. The margin is for the focus ring, which is drawn
+       2px outside a tile and would otherwise lose its outer edge at the
+       boundary. */
+    overflow: clip;
+    overflow-clip-margin: 0.5rem;
+  }
+
+  .piece-tile {
+    position: absolute;
+    top: 0;
+    left: 0;
+    --c: var(--c-2);
+    --r: var(--r-2);
+    --cs: var(--cs-2);
+    width: calc(var(--cs) * var(--col) + (var(--cs) - 1) * var(--grid-gap));
+    transform: translate3d(
+      calc(var(--c) * (var(--col) + var(--grid-gap))),
+      calc(var(--r) * (var(--row) + var(--grid-gap-y))),
+      0
+    );
+    /* Position only. Opacity is transitioned on the body inside, because the
+       two want different timings at the same moment: when a filter changes,
+       the pieces leaving fade in 180ms while the pieces staying take 450ms to
+       travel into the gaps they left. One `transition-duration` on one element
+       cannot say both.
+
+       `--move-delay` is set from React so the travel starts fractionally after
+       the fade — enough that the two read as cause and effect rather than as
+       one blurred event, not enough to feel like two. */
+    transition-property: transform, width;
+    transition-duration: var(--duration-slow);
+    transition-delay: var(--move-delay, 0ms);
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Everything drawn inside a tile: the image and the caption under it. Carries
+     the opacity, so a tile can be fading while it moves, at its own rate.
+     `--fade-*` are set per tile from React — the exit stagger is a function of
+     how far a tile is from the one that was clicked, which is a distance only
+     measurable at the moment of the click. */
+  .piece-tile-body {
+    transition-property: opacity;
+    transition-duration: var(--fade-duration, var(--duration-base));
+    transition-delay: var(--fade-delay, 0ms);
+    transition-timing-function: ease;
+  }
+
+  /* A feature is two cells by two, and its image keeps the same ratio as a
+     single tile — so its height comes from `aspect-ratio` on the media
+     below, not from the row arithmetic. That leaves it a fraction of a gap
+     taller than two bare rows, which lands harmlessly in the vertical gap:
+     the gap has a caption's worth of room in it and a feature never needs
+     more than a few pixels of that. */
+  .piece-tile-media {
+    position: relative;
+    width: 100%;
+    aspect-ratio: var(--ar);
+    overflow: hidden;
+  }
+
+  @container (min-width: 34rem) {
+    .piece-grid {
+      --cols: 3;
+      --rows: var(--grid-rows-3);
+    }
+    .piece-tile {
+      --c: var(--c-3);
+      --r: var(--r-3);
+      --cs: var(--cs-3);
+    }
+  }
+
+  @container (min-width: 52rem) {
+    .piece-grid {
+      --cols: 4;
+      --rows: var(--grid-rows-4);
+    }
+    .piece-tile {
+      --c: var(--c-4);
+      --r: var(--r-4);
+      --cs: var(--cs-4);
+    }
+  }
+
+  @container (min-width: 72rem) {
+    .piece-grid {
+      --cols: 5;
+      --rows: var(--grid-rows-5);
+    }
+    .piece-tile {
+      --c: var(--c-5);
+      --r: var(--r-5);
+      --cs: var(--cs-5);
+    }
+  }
+
+  @container (min-width: 96rem) {
+    .piece-grid {
+      --cols: 6;
+      --rows: var(--grid-rows-6);
+    }
+    .piece-tile {
+      --c: var(--c-6);
+      --r: var(--r-6);
+      --cs: var(--cs-6);
+    }
   }
 }

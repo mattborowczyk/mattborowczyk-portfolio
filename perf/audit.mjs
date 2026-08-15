@@ -159,7 +159,15 @@ let failed = false;
 
 try {
   const home = await warm("/");
-  const routes = ["/", await firstProductPath(home)];
+  // Both arrangements of the archive, because they are different pages as far
+  // as the budget is concerned. The run puts one or two pieces in the opening
+  // viewport; the grid puts a feature tile and its neighbours there, and
+  // `loading="lazy"` buys nothing for anything above the fold. Measuring only
+  // whichever one Site Settings currently makes the default would mean the
+  // other could drift over budget and nothing would say so — and that setting
+  // is flipped from the CMS, without a deploy, so it can change between two
+  // runs of the same commit.
+  const routes = ["/", "/?view=grid", await firstProductPath(home)];
   if (await exists("/course")) routes.push("/course");
   else console.log("skip   /course".padEnd(35) + "route not available");
 

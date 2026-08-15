@@ -64,12 +64,90 @@ export const pageNav = [
  * Shared so the run and the rail can't disagree: they previously derived this
  * separately, and an unrecognised filter showed every piece while leaving no
  * rail entry highlighted.
+ *
+ * Note what "the live taxonomy" now means: `getSettings().categories` is the
+ * CMS list narrowed to categories that actually have pieces. A category an
+ * editor has declared but not yet filled is therefore *unknown* here, and
+ * collapses to `ALL_PIECES` like any other — which is what makes the empty
+ * grid unreachable rather than merely handled. See `usedCategories` below.
  */
 export function resolveFilter(
   categories: readonly string[],
   raw: string | null | undefined,
 ): string {
   return raw && categories.includes(raw) ? raw : ALL_PIECES;
+}
+
+/**
+ * The two ways of reading the archive.
+ *
+ * `archive` is the run — one ordered column, filtering by weight rather than by
+ * removal. `grid` is the composed lattice. They show the same pieces in the
+ * same order; only the arrangement differs.
+ */
+export const ARCHIVE_VIEW = "archive";
+export const GRID_VIEW = "grid";
+
+export type ArchiveView = typeof ARCHIVE_VIEW | typeof GRID_VIEW;
+
+/**
+ * Resolve a raw `?view=` value, given whichever view Site Settings has made the
+ * default. Mirrors `resolveFilter`: anything unrecognised collapses to the
+ * default rather than erroring or rendering nothing.
+ *
+ * The default view is deliberately the one with *no* param. `viewHref` below
+ * depends on it, and so does the canonical URL: with the default carrying a
+ * param there would be two addresses for the same page, and flipping the
+ * setting in Sanity would silently change which of them was canonical.
+ */
+export function resolveView(
+  defaultView: ArchiveView,
+  raw: string | null | undefined,
+): ArchiveView {
+  if (raw === ARCHIVE_VIEW || raw === GRID_VIEW) return raw;
+  return defaultView;
+}
+
+/**
+ * The URL that selects `view`, preserving an active filter.
+ *
+ * The default view drops the param entirely, so the address a visitor shares is
+ * `/` (or `/?filter=Rings`) rather than `/?view=archive&filter=Rings` — one
+ * canonical address per state, whichever way the setting points.
+ */
+export function viewHref(
+  defaultView: ArchiveView,
+  view: ArchiveView,
+  filter: string,
+): string {
+  const params = new URLSearchParams();
+  if (view !== defaultView) params.set("view", view);
+  if (filter !== ALL_PIECES) params.set("filter", filter);
+  const query = params.toString();
+  return query ? `/?${query}` : "/";
+}
+
+/**
+ * The taxonomy narrowed to categories that actually have pieces, in the CMS's
+ * display order, with `ALL_PIECES` kept at the head.
+ *
+ * The rail should not offer a filter that leads nowhere, and this matters more
+ * in grid view than it did in the run: the run *cannot* empty, because
+ * non-matching pieces shrink in place rather than leaving, so an unused
+ * category showed a column of thumbnails — odd, but never blank. The grid
+ * reflows, so the same click yields a heading and an empty page.
+ *
+ * Site Settings keeps the full list on purpose. That list is the editing
+ * vocabulary — it is what the Studio's category validation checks against, and
+ * a category has to exist there before the first piece can be filed under it.
+ * This is only about what the rail offers a visitor.
+ */
+export function usedCategories(
+  categories: readonly string[],
+  used: Iterable<string>,
+): readonly string[] {
+  const inUse = new Set(used);
+  return categories.filter((c) => c === ALL_PIECES || inUse.has(c));
 }
 
 /**

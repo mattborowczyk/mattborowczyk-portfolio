@@ -125,6 +125,19 @@ export const productSchema = defineType({
       // error state on first open for a field nothing reads yet.
     }),
     defineField({
+      name: "unique",
+      title: "One of a kind",
+      type: "boolean",
+      description:
+        "This exact piece exists once and cannot be remade — shown as 1/1 on the grid tile and in the spec block. Leave off for a design that can be commissioned again; off is also what every piece made before this field existed will read as.",
+      // No `initialValue`. It would write `false` onto every piece opened in
+      // the Studio from here on, which turns "nobody has said" into "somebody
+      // said no" — and the two are only distinguishable while the field is
+      // genuinely unset. Nothing reads a `false` differently from an absent
+      // value today, but the day something does, the distinction has to still
+      // be there. Same instinct as `format` above being left un-required.
+    }),
+    defineField({
       name: "material",
       title: "Material",
       type: "string",

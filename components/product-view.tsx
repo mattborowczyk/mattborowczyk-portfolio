@@ -94,7 +94,19 @@ export default function ProductView({
 
   const present = (v: string | undefined): v is string => Boolean(v);
   const measurements = [product.dimensions, product.weight].filter(present);
-  const makeup = [materialLabel(product.material), product.details].filter(present);
+  const makeup = [
+    materialLabel(product.material),
+    product.details,
+    // Spelled out here rather than shown as the bare `1/1` the grid tile uses.
+    // On a tile the marker sits beside a name and a price and is read as one
+    // of a set of markers; here it is a sentence about the piece, in a block of
+    // sentences about the piece, and "1/1" alone would be the only thing on the
+    // page a visitor had to already know the convention for.
+    //
+    // Only an explicit `true`: every piece predates the field, and unset means
+    // nobody has said, which is not the same as "not unique".
+    product.unique === true ? "One of a kind (1/1)" : undefined,
+  ].filter(present);
 
   const specs: { key: string; body: ReactNode }[] = [];
   if (product.description) {
