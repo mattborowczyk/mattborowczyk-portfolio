@@ -39,10 +39,10 @@ export default function NewsletterCard({
   // from `status` because the card shows one message either way, and only this
   // subset of errors may be attached to the input.
   const [fieldError, setFieldError] = useState(false);
-  // One ref for every pending timer — the auto-open delay and the post-success
-  // auto-close both live here, so opening the card always cancels whichever is
-  // outstanding. Previously the close timer was unowned: re-opening within 4s
-  // of a successful signup got shut again by the earlier timeout.
+  // The pending auto-open, held so that opening the card by hand — or
+  // unmounting — calls it off rather than letting it fire into a card that is
+  // already open. This used to hold a post-success auto-close as well; that one
+  // is gone (see `subscribe`), and the clears left behind are harmless.
   const autoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -108,9 +108,21 @@ export default function NewsletterCard({
         } catch {
           /* ignore */
         }
-        // Long enough to read a "check your inbox to confirm" instruction.
+        // The card used to close itself four seconds after this, "long enough
+        // to read a 'check your inbox to confirm' instruction" — which is a
+        // time limit on reading, and WCAG 2.2.1 (Level A) does not allow one
+        // without a way to turn it off, adjust it or extend it. Four seconds is
+        // not long for an instruction that has to be acted on in another
+        // application, and someone using a screen reader or a magnifier may not
+        // have reached the end of it. None of the exceptions apply: it is not
+        // real-time, and nothing about the message stops being true if it stays
+        // on screen.
+        //
+        // So it stays until it is dismissed. That costs nothing — the success
+        // path has already written DISMISS_KEY, so the card does not come back
+        // on the next page or the next visit either way; the only difference is
+        // who decides when it goes.
         if (autoTimer.current) clearTimeout(autoTimer.current);
-        autoTimer.current = setTimeout(() => setShow(false), 4000);
       } else {
         setStatus("error");
         // 400 is the route's answer to an address it will not accept, and the
@@ -205,11 +217,30 @@ export default function NewsletterCard({
             <input
               type="email"
               required
+              // WCAG 1.3.5: a field collecting information *about the user*
+              // has to name its purpose in machine-readable terms, which is
+              // what lets a browser fill it and what an assistive tool reads to
+              // put a familiar icon or wording beside it. `type="email"` is not
+              // that — it describes the format, not whose address this is.
+              autoComplete="email"
               aria-label="Email address"
               aria-describedby={fieldError ? ERROR_ID : undefined}
               aria-invalid={fieldError || undefined}
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                // The field's error is about the value that was submitted, so
+                // editing it makes the error stale: `aria-invalid` would go on
+                // saying the address is wrong while it is being corrected, and
+                // the message under the field would still name a value that is
+                // no longer there. Only the field's own error clears — a rate
+                // limit or a 500 is about the request and applies just as much
+                // to whatever is typed next, so it stays up.
+                if (fieldError) {
+                  setFieldError(false);
+                  setStatus("idle");
+                }
+              }}
               placeholder="your@email.com"
               disabled={status === "loading"}
               className="block w-full border-b border-hairline-ui bg-transparent py-2 font-mono text-sm text-ink outline-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-gold-ink placeholder:text-label-lightest disabled:opacity-50"

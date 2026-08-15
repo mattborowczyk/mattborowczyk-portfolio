@@ -24,7 +24,7 @@ export function ctaClass({
 }: { size?: CtaSize; block?: boolean; className?: string } = {}) {
   // Hover fills with `gold-ink`, not `gold`: the label stays bone through the
   // change, and bone on the brand gold is 2.68:1 — the button became unreadable
-  // at the moment you pointed at it. On gold-ink it is 4.83:1.
+  // at the moment you pointed at it. On gold-ink it is 5.14:1.
   return cn(
     "focus-ring bg-ink text-center font-sans font-bold uppercase text-bone transition-colors duration-fast hover:bg-gold-ink",
     sizeClass[size],

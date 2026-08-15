@@ -31,8 +31,8 @@
        anything that has to be *read*. So:
 
          --gold        fills, marks on ink, decoration        (no contrast duty)
-         --gold-ink    gold as text at UI sizes, and the       4.83:1 on bone
-                       focus ring                              4.49:1 on band
+         --gold-ink    gold as text at UI sizes, and the       5.14:1 on bone
+                       focus ring                              4.78:1 on band
          --gold-soft   gold on display-size numerals only      3.34:1 on bone
                        (≥24px, where AA drops to 3:1)
 
@@ -40,7 +40,13 @@
        came out at 1.57:1 — the faint decorative touch was the failure. Keep
        it off anything below 24px. */
     --gold: #b08d4f;
-    --gold-ink: #7d6437;
+    /* Darkened from #7d6437, which was 4.83:1 on bone but only 4.49:1 on band
+       — passing AA on the page and missing it by a hundredth in a spec block,
+       which is where the 11px course line sits. Every step of the mono label
+       scale below is already cut against band for that reason; this is the
+       same rule applied to the one gold that has to be read. Scaled down in
+       proportion, so the hue is the one that was chosen. */
+    --gold-ink: #786035;
     --gold-soft: #9c7d45;
 
     /* Translucent ink for marks drawn straight onto a render/placeholder

@@ -217,6 +217,7 @@ function PieceMedia({
   sizes = FULL_SIZES,
   overlay = false,
   show = true,
+  playing = show,
   priority = false,
 }: {
   item: ProductMedia;
@@ -225,6 +226,13 @@ function PieceMedia({
   /** Overlay layers sit above the base still and are decorative. */
   overlay?: boolean;
   show?: boolean;
+  /**
+   * Whether a clip in this slot may run. Separate from `show` because the two
+   * questions came apart: `show` is about the piece's size and drives which
+   * derivative is asked for, while this is about whether motion has been asked
+   * for at all. Defaults to `show`, so a still slot is unaffected.
+   */
+  playing?: boolean;
   /** The one piece that opens above the fold — see `Piece`. */
   priority?: boolean;
 }) {
@@ -233,7 +241,7 @@ function PieceMedia({
     // Overlays are hover-only and so never the lead; `priority` is the base
     // layer's business alone.
     if (overlay) return <OverlayVideo item={item} show={show} />;
-    return <BaseVideo item={item} playing={show} priority={priority} />;
+    return <BaseVideo item={item} playing={playing} priority={priority} />;
   }
   return (
     <Image
@@ -330,6 +338,26 @@ function Piece({
             name={product.name}
             sizes={everLarge ? FULL_SIZES : THUMB_SIZES}
             show={isMatch}
+            // A clip here now runs only while the piece is pointed at or
+            // focused, where it used to run from the moment the piece was at
+            // full size. That is WCAG 2.2.2 (Level A): moving content which
+            // starts on its own and lasts more than five seconds owes the
+            // visitor a way to pause, stop or hide it — and a looping clip has
+            // no end, so it always does. There is nowhere to put a pause
+            // control here: the clip is inside the link to the piece, and a
+            // button inside a link is not a thing a browser can resolve.
+            //
+            // Starting it on hover or focus removes the obligation rather than
+            // satisfying it, because content the visitor started is not content
+            // that started automatically — and it is the same gesture the
+            // second-media overlay above has always used, so the run behaves
+            // one way rather than two. `isHover` is raised by `reveal` on focus
+            // as well as by the mouse, so this is reachable from the keyboard.
+            //
+            // The cost, stated plainly: on a touch screen there is no hover, so
+            // a clip in the run shows its poster and nothing else. Tapping goes
+            // to the piece's own page, where it plays — with a pause control.
+            playing={isMatch && isHover}
             // The lead piece is the largest thing in the opening viewport and
             // therefore the LCP element on the catalogue. Left to the default
             // it is `loading="lazy"` like every other piece in the run, which
@@ -609,8 +637,22 @@ export default function CatalogueRun({
               // they catch focus landing on anything inside the piece — the
               // image link or the commission link in the card — and clear
               // again when it leaves for a different piece.
+              //
+              // The `relatedTarget` check is what keeps the second of those
+              // two reachable: tabbing from the image to the commission link
+              // is a focusout and a focusin on the same row, and clearing on
+              // the way out would take the card down and put it straight back
+              // up around the link being tabbed to. Focus leaving the document
+              // has no relatedTarget, which is outside the row, so that still
+              // clears.
               onFocus={isMatch ? () => reveal(p.ref) : undefined}
-              onBlur={isMatch ? leave : undefined}
+              onBlur={
+                isMatch
+                  ? (e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget)) leave();
+                    }
+                  : undefined
+              }
             >
               <Piece
                 product={p}
