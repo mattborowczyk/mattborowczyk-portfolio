@@ -157,11 +157,17 @@ function Tile({
     if (interactive) setEverShown(true);
   }, [interactive]);
 
-  // The composition decides the shape of the frame, and the frame is what the
-  // hotspot is cropped against. Ratio is per slot, but it is the *same* slot
-  // ratio at every column count, so one value serves all five.
-  const ratio = placements[0].ratio;
-  const colSpan = placements[3].colSpan;
+  // A piece sits in a different slot in each composition, so both its shape and
+  // its footprint can differ by column count — one value cannot serve all five.
+  // `--ar` is therefore emitted per breakpoint like the position is, and the
+  // container queries pick one.
+  //
+  // `sizes` cannot be: it is answered in viewport units, before any of this is
+  // known. The widest footprint the piece ever has is used, so a piece that is a
+  // feature at one width is never asked for a derivative too small for it —
+  // erring towards a few unused bytes rather than towards a soft image, and
+  // features are roughly one slot in twenty.
+  const colSpan = Math.max(...placements.map((slot) => slot.colSpan));
 
   // Every value a string, including the numeric ones. React writes a custom
   // property given a number differently from the same number given as a string,
@@ -169,7 +175,6 @@ function Tile({
   // rendered CSS is identical either way, so the only symptom is the warning
   // and a tree React declines to patch up.
   const vars: Record<string, string> = {
-    "--ar": String(ratio),
     "--fade-duration": `${motion.fadeMs}ms`,
     "--fade-delay": `${motion.fadeDelayMs}ms`,
     "--move-delay": `${motion.moveDelayMs}ms`,
@@ -180,6 +185,7 @@ function Tile({
     vars[`--c-${cols}`] = String(slot.col);
     vars[`--r-${cols}`] = String(slot.row);
     vars[`--cs-${cols}`] = String(slot.colSpan);
+    vars[`--ar-${cols}`] = String(slot.ratio);
   });
 
   return (

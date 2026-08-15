@@ -380,6 +380,7 @@
     --c: var(--c-2);
     --r: var(--r-2);
     --cs: var(--cs-2);
+    --ar: var(--ar-2);
     width: calc(var(--cs) * var(--col) + (var(--cs) - 1) * var(--grid-gap));
     transform: translate3d(
       calc(var(--c) * (var(--col) + var(--grid-gap))),
@@ -435,6 +436,7 @@
       --c: var(--c-3);
       --r: var(--r-3);
       --cs: var(--cs-3);
+      --ar: var(--ar-3);
     }
   }
 
@@ -447,6 +449,7 @@
       --c: var(--c-4);
       --r: var(--r-4);
       --cs: var(--cs-4);
+      --ar: var(--ar-4);
     }
   }
 
@@ -459,6 +462,7 @@
       --c: var(--c-5);
       --r: var(--r-5);
       --cs: var(--cs-5);
+      --ar: var(--ar-5);
     }
   }
 
@@ -471,6 +475,7 @@
       --c: var(--c-6);
       --r: var(--r-6);
       --cs: var(--cs-6);
+      --ar: var(--ar-6);
     }
   }
 }
