@@ -204,11 +204,20 @@
        has the same room as any other; see `height` on `.piece-grid`. */
     --grid-ratio: 0.8;
     --grid-gap: clamp(0.75rem, 1.6vw, 1.375rem); /* 12 → 22px */
-    --grid-gap-y: clamp(4.5rem, 7vw, 9.5rem); /* 72 → 152px */
-    /* Where the ladder stops. Six columns at this width are ~280px each, which
-       is the bottom of the band a tile stays legible in; a seventh column past
-       here would make every piece a thumbnail, so the grid centres instead. */
-    --grid-max: 112rem; /* 1792px */
+    /* The vertical gap holds a caption and then some air. It was 72→152px,
+       which at a wide window put most of a tile's height of nothing between
+       every pair of rows — the rows stopped reading as a grid and started
+       reading as a list of separate things. */
+    --grid-gap-y: clamp(3.25rem, 4.5vw, 5.5rem); /* 52 → 88px */
+    /* Where the ladder stops.
+    
+       The ladder is built around a tile that never exceeds ~215px: each
+       breakpoint below is the width at which the current column count would
+       push a tile past that, so the next column takes over instead. Six
+       columns reaching 215px is 1408px of grid, and that is the end of it —
+       past here the grid keeps this size and centres, rather than growing
+       tiles that have already been decided to be as large as they should get. */
+    --grid-max: 88rem; /* 1408px — six 215px columns and their gaps */
 
     /* ── Draft banner ──────────────────────────────────────────────────
        The banner is fixed across the top, so it would sit over the nav
@@ -380,6 +389,7 @@
     --c: var(--c-2);
     --r: var(--r-2);
     --cs: var(--cs-2);
+    --rs: var(--rs-2);
     --ar: var(--ar-2);
     width: calc(var(--cs) * var(--col) + (var(--cs) - 1) * var(--grid-gap));
     transform: translate3d(
@@ -414,20 +424,30 @@
     transition-timing-function: ease;
   }
 
-  /* A feature is two cells by two, and its image keeps the same ratio as a
-     single tile — so its height comes from `aspect-ratio` on the media
-     below, not from the row arithmetic. That leaves it a fraction of a gap
-     taller than two bare rows, which lands harmlessly in the vertical gap:
-     the gap has a caption's worth of room in it and a feature never needs
-     more than a few pixels of that. */
+  /* Height comes from the lattice, not from `aspect-ratio`, and that is a fix
+     rather than a preference.
+
+     A feature is two rows tall, but sized by its ratio it came out only
+     `2·col/ar` high while the two row slots it occupies are `2·(row + gap-y)`.
+     The difference — a whole vertical gap, which at a wide window was some
+     270px — appeared as dead space under every feature, and under nothing
+     else, which is why it read as a bug rather than as rhythm.
+
+     One expression covers both cases. At `--rs: 1` it reduces to `col / ar`,
+     which is exactly the tile's own ratio; at `--rs: 2` it is two rows plus the
+     one gap between them, so the space *below* a feature is the same gap that
+     follows any other tile. `--ar` still decides the shape of a single tile,
+     so a composition that varies ratios keeps working. */
   .piece-tile-media {
     position: relative;
     width: 100%;
-    aspect-ratio: var(--ar);
+    height: calc(
+      var(--rs) * var(--col) / var(--ar) + (var(--rs) - 1) * var(--grid-gap-y)
+    );
     overflow: hidden;
   }
 
-  @container (min-width: 34rem) {
+  @container (min-width: 28rem) {
     .piece-grid {
       --cols: 3;
       --rows: var(--grid-rows-3);
@@ -436,11 +456,12 @@
       --c: var(--c-3);
       --r: var(--r-3);
       --cs: var(--cs-3);
+      --rs: var(--rs-3);
       --ar: var(--ar-3);
     }
   }
 
-  @container (min-width: 52rem) {
+  @container (min-width: 43rem) {
     .piece-grid {
       --cols: 4;
       --rows: var(--grid-rows-4);
@@ -449,11 +470,12 @@
       --c: var(--c-4);
       --r: var(--r-4);
       --cs: var(--cs-4);
+      --rs: var(--rs-4);
       --ar: var(--ar-4);
     }
   }
 
-  @container (min-width: 72rem) {
+  @container (min-width: 58rem) {
     .piece-grid {
       --cols: 5;
       --rows: var(--grid-rows-5);
@@ -462,11 +484,12 @@
       --c: var(--c-5);
       --r: var(--r-5);
       --cs: var(--cs-5);
+      --rs: var(--rs-5);
       --ar: var(--ar-5);
     }
   }
 
-  @container (min-width: 96rem) {
+  @container (min-width: 73rem) {
     .piece-grid {
       --cols: 6;
       --rows: var(--grid-rows-6);
@@ -475,6 +498,7 @@
       --c: var(--c-6);
       --r: var(--r-6);
       --cs: var(--cs-6);
+      --rs: var(--rs-6);
       --ar: var(--ar-6);
     }
   }

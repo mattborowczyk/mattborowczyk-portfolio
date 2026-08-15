@@ -140,91 +140,109 @@ function pattern(cols: number, rows: readonly string[]): GridPattern {
 }
 
 /**
- * Two columns — phones, and the narrow half of a tablet.
+ * Two columns — phones.
  *
- * The feature is deliberately **not** first here, and this is the one place the
- * compositions are shaped by a measurement rather than by eye.
+ * No feature at all. A feature spans both columns here, which makes it a
+ * full-bleed image rather than a highlight — it stops reading as "this one
+ * matters" and starts reading as "the layout broke". So the phone gets a plain
+ * two-column grid whose only variation is where the voids fall.
  *
- * A feature spans both columns, which at 375px means a full-bleed image: the
- * largest element in the opening viewport, and therefore the LCP element on the
- * device Lighthouse actually grades. Opening on it cost 0.3s of LCP against
- * opening on a single half-width tile — for a composition that was no better,
- * only bigger. The cycle now opens on one small piece with air around it and the
- * feature arrives at the third row, still within the first scroll on most
- * phones.
- *
- * The wider compositions keep their feature in the first row. There it is one
- * element among several rather than the whole screen, and the arithmetic that
- * makes it expensive here does not apply.
+ * That is also the cheapest opening viewport in the set, which matters: this is
+ * the width Lighthouse grades, and a full-width feature in the first rows cost
+ * 8 points and 1.1s of LCP when it was tried.
  */
 const COLUMNS_2 = () => pattern(2, [
   "# .",
   ". #",
-  "F +",
-  "+ +",
+  "# #",
+  ". #",
+  "# .",
+  "# #",
+  ". #",
   "# .",
   ". #",
   "# #",
-  ". #",
-  "# #",
-  ". #",
-]);
-
-/** Three columns — large phones in landscape, tablets, small laptops. */
-const COLUMNS_3 = () => pattern(3, [
-  "F + #",
-  "+ + .",
-  "# . #",
-  ". # #",
-  "# # .",
-  "# F +",
-  ". + +",
-  "# # #",
-  ". # .",
-  "# . #",
-]);
-
-/** Four columns. */
-const COLUMNS_4 = () => pattern(4, [
-  "F + . #",
-  "+ + . .",
-  "# . # #",
-  "# # . .",
-  ". # F +",
-  "# . + +",
-  "# # # .",
-  ". # . #",
-  "# . # #",
-]);
-
-/** Five columns — the widest arrangement most desktops will see. */
-const COLUMNS_5 = () => pattern(5, [
-  "F + . # .",
-  "+ + . . .",
-  "# . # # .",
-  ". # . # #",
-  "# # . F +",
-  ". # # + +",
-  "# . # # #",
-  "# # . . #",
 ]);
 
 /**
- * Six columns — the last step before the grid stops widening and centres.
+ * Three columns — large phones in landscape, small tablets.
  *
- * The feature opens off the left edge here rather than on it. At this width a
- * feature in the first column leaves a very long empty run to its right, which
- * reads as a missing image rather than as air.
+ * Still no feature. At three columns a 2×2 takes two thirds of the width and
+ * two rows of height, which is the same problem the phone has, only slightly
+ * less severe. The variation comes entirely from the row templates.
+ */
+const COLUMNS_3 = () => pattern(3, [
+  "# . #",
+  ". # #",
+  "# . .",
+  ". # #",
+  "# # .",
+  "# . #",
+  ". # .",
+  "# # #",
+]);
+
+/**
+ * Four columns — the narrower desktops, and a 1300–1400px window.
+ *
+ * The first width that gets a feature. Two free columns beside it is enough for
+ * the band rule below to read as a band rather than as a leftover.
+ */
+const COLUMNS_4 = () => pattern(4, [
+  "# . # .",
+  "# . F +",
+  ". . + +",
+  "# . . #",
+  "F + . #",
+  "+ + . .",
+  ". # # .",
+  "# . # #",
+]);
+
+/**
+ * Five columns.
+ *
+ * The band rule, stated once because every composition from here up obeys it:
+ *
+ *   - The **first row is always small pieces only.** A feature never opens the
+ *     cycle; it arrives on the second row.
+ *   - A feature occupies a 2×2 **band**. The columns beside it hold small
+ *     pieces in *one* of the band's two rows, never split across both, with a
+ *     void between them and the feature so the two never touch.
+ *   - Which row the smalls take **alternates** band to band — top, then bottom.
+ *   - The feature **alternates side** — right, then left — so features step
+ *     diagonally down the composition rather than stacking in a column.
+ *
+ * Read as pictures, the two band forms at this width are `SSxBB` over `xxxBB`,
+ * and `BBxxx` over `BBxSS`.
+ */
+const COLUMNS_5 = () => pattern(5, [
+  "# . # . #",
+  "# # . F +",
+  ". . . + +",
+  "# . # . #",
+  "F + . . .",
+  "+ + . # #",
+  ". # . # .",
+  "# . # # .",
+]);
+
+/**
+ * Six columns — the last step. Past this the grid stops widening and centres.
+ *
+ * Same band rule as five. With four free columns beside the feature the smalls
+ * get a little more room to be arranged, so the two bands here are `SxxxBB`
+ * over `xSSxBB`, and `BBxxxS` over `BBxSSx`.
  */
 const COLUMNS_6 = () => pattern(6, [
-  ". F + . # .",
-  ". + + . . .",
-  "# . # # . #",
-  "# # . # # .",
-  ". # # . F +",
-  "# . # # + +",
-  "# # # . # #",
-  ". # . # # .",
+  "# . # . # .",
+  "# . . . F +",
+  ". # # . + +",
+  "# . # . # .",
+  "F + . . . #",
+  "+ + . # # .",
+  ". # . # . #",
+  "# . # . # .",
 ]);
 
 /**

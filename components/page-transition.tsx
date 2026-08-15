@@ -37,6 +37,22 @@ const PAGE_FADE_MS = 500;
 const MEDIA_WAIT_CAP_MS = 500;
 
 /**
+ * How long the outgoing arrangement fades before the view actually changes.
+ *
+ * A view change is a query push, so React swaps one arrangement for the other
+ * the instant it lands — there is no "leaving" state to animate unless the push
+ * is held back until the fade has run, which is the same trick the route
+ * transition below uses and for the same reason. Without it the old pieces are
+ * simply gone: the column's images were still on screen one frame and replaced
+ * the next, which read as a flash rather than as a transition.
+ *
+ * Much shorter than `PAGE_FADE_MS`. This is not a journey between pages — it is
+ * the same pieces rearranging, and the visitor asked for it by clicking a
+ * toggle, so every millisecond here is latency they can feel.
+ */
+export const VIEW_FADE_MS = 220;
+
+/**
  * The navigation in flight: true from the moment one is committed to until the
  * new route lands, alongside where it is going.
  *
@@ -46,9 +62,12 @@ const MEDIA_WAIT_CAP_MS = 500;
  * href can answer, since the click itself was taken by the document listener
  * below rather than by anything inside the grid.
  */
-const LeavingContext = createContext<{ leaving: boolean; href: string | null }>(
-  { leaving: false, href: null },
-);
+const LeavingContext = createContext<{
+  leaving: boolean;
+  href: string | null;
+  /** True while the outgoing *arrangement* fades, before the view swaps. */
+  viewLeaving: boolean;
+}>({ leaving: false, href: null, viewLeaving: false });
 
 /**
  * Set just before a router push and read by the `PageFade` that arrives after
@@ -98,6 +117,15 @@ export function usePageLeaving() {
  */
 export function usePageLeavingHref() {
   return useContext(LeavingContext).href;
+}
+
+/**
+ * True while the archive's current arrangement is fading out on its way to the
+ * other one. Read by `CatalogueView`, which owns the fade for both views so
+ * neither has to know the other exists.
+ */
+export function useViewLeaving() {
+  return useContext(LeavingContext).viewLeaving;
 }
 
 /**
@@ -253,6 +281,9 @@ export function PageTransitionProvider({
   // Kept beside `leaving` rather than folded into it, so the many places that
   // only care whether a navigation is happening are unchanged.
   const [leavingHref, setLeavingHref] = useState<string | null>(null);
+  const [viewLeaving, setViewLeaving] = useState(false);
+  /** The view push waiting out its fade, held so it can be called off. */
+  const pendingView = useRef<number | null>(null);
   // Guards a second click while a fade is already running: the first has taken
   // the navigation and a second would stack another timer behind it.
   const navigating = useRef(false);
@@ -267,6 +298,12 @@ export function PageTransitionProvider({
     setLeavingHref(null);
 
     return () => {
+      // A view fade that has not fired yet must not land on a different route.
+      if (pendingView.current !== null) {
+        window.clearTimeout(pendingView.current);
+        pendingView.current = null;
+        setViewLeaving(false);
+      }
       // Only ever non-null if the timer has not fired, because the callback
       // clears it before pushing — so this cannot cancel a navigation that is
       // merely completing. What it catches is the route changing by some other
@@ -352,22 +389,41 @@ export function PageTransitionProvider({
         const changesView =
           new URL(location.href).searchParams.get("view") !==
           inPlace.searchParams.get("view");
-        if (changesView) {
+
+        // Hash included: nothing on the site pairs one with a query today, but
+        // the route branch below preserves it and a silent difference between
+        // the two is the kind that gets found the hard way.
+        const href = `${inPlace.pathname}${inPlace.search}${inPlace.hash}`;
+
+        // A filter change lands immediately — the run and the grid both animate
+        // that themselves, in place, and delaying it would only make a control
+        // people press repeatedly feel slow.
+        if (!changesView) {
+          router.push(href, { scroll: false });
+          return;
+        }
+
+        // A view change is held back so the arrangement being left can fade.
+        // React swaps the two the instant the push lands, so without this there
+        // is no outgoing state to animate at all: the old pieces were on screen
+        // one frame and gone the next.
+        if (pendingView.current !== null) return;
+        setViewLeaving(true);
+        pendingView.current = window.setTimeout(() => {
+          pendingView.current = null;
+          // Scrolled here rather than before the fade: the two arrangements
+          // differ in height by roughly ten to one, so there is no position to
+          // preserve — and doing it now means it happens while the page is at
+          // opacity 0 and nobody sees it move.
           window.scrollTo({ top: 0, behavior: "instant" });
           // Read by whichever arrangement this click is about to mount — see
           // `consumeViewChange`. Set here rather than inferred there because
           // this is the only place that knows a *view* changed, as opposed to
           // a filter, a route, or a re-render.
           viewJustChanged = true;
-        }
-
-        // Hash included: nothing on the site pairs one with a query today, but
-        // the route branch below preserves it and a silent difference between
-        // the two is the kind that gets found the hard way.
-        router.push(
-          `${inPlace.pathname}${inPlace.search}${inPlace.hash}`,
-          { scroll: false },
-        );
+          setViewLeaving(false);
+          router.push(href, { scroll: false });
+        }, VIEW_FADE_MS);
         return;
       }
 
@@ -436,8 +492,8 @@ export function PageTransitionProvider({
   // would re-render every consumer on every parent render — which here means
   // every tile in the grid, on a page that is otherwise entirely static.
   const state = useMemo(
-    () => ({ leaving, href: leavingHref }),
-    [leaving, leavingHref],
+    () => ({ leaving, href: leavingHref, viewLeaving }),
+    [leaving, leavingHref, viewLeaving],
   );
 
   return (

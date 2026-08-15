@@ -5,7 +5,6 @@ import Link from "next/link";
 
 import PieceMedia, { useHoverCapable } from "@/components/piece-media";
 import RenderPlaceholder from "@/components/render-placeholder";
-import Eyebrow from "@/components/ui/eyebrow";
 import {
   consumeViewChange,
   usePageLeavingHref,
@@ -60,16 +59,21 @@ import { cn } from "@/lib/utils";
  * wrong derivative in the network panel.
  */
 function tileSizes(colSpan: number): string {
+  // Each step is the viewport at which the container crosses one of the four
+  // breakpoints in globals.css, and each percentage is the tile at its largest
+  // within that step — ~215px, which is what the whole ladder is built around.
   const steps = [
-    ["96rem", 19],
-    ["72rem", 21],
-    ["60rem", 24],
-    ["53.75rem", 28],
+    ["103rem", 13], // 6 columns
+    ["87rem", 15], //  5 columns
+    ["71rem", 19], //  4 columns
+    ["55rem", 24], //  3 columns
   ] as const;
   const clauses = steps.map(
     ([at, vw]) => `(min-width: ${at}) ${vw * colSpan}vw`,
   );
-  return [...clauses, `${46 * colSpan}vw`].join(", ");
+  // Below the `nav` breakpoint there are no rails, so the container is the
+  // viewport less its gutters and a two-column tile is a much larger fraction.
+  return [...clauses, `${44 * colSpan}vw`].join(", ");
 }
 
 /** How far a tile dims when a sibling is being hovered. */
@@ -185,6 +189,7 @@ function Tile({
     vars[`--c-${cols}`] = String(slot.col);
     vars[`--r-${cols}`] = String(slot.row);
     vars[`--cs-${cols}`] = String(slot.colSpan);
+    vars[`--rs-${cols}`] = String(slot.rowSpan);
     vars[`--ar-${cols}`] = String(slot.ratio);
   });
 
@@ -298,7 +303,11 @@ function Tile({
             `--grid-gap-y`. */}
         <div className="mt-2xs flex flex-col gap-3xs">
           <div className="flex items-baseline justify-between gap-3xs">
-            <span className="font-sans text-base font-bold leading-snug text-ink">
+            {/* Not bold. At this size and in this quantity the weight read as
+                emphasis the grid never intended — thirty pieces all insisting.
+                The piece is the photograph; the name only has to be legible
+                under it. */}
+            <span className="font-sans text-base leading-snug text-ink">
               {product.name}
             </span>
             {/* Only ever shown for an explicit `true`. Every piece in the
@@ -459,29 +468,25 @@ export default function CatalogueGrid({
 
   return (
     <div className="flex flex-col gap-lg">
+      {/* The heading is present and invisible, which is not the same as absent.
+          It is the page's only `<h1>` — the archive had no heading of any level
+          before this line became one, just a run of images — so removing it
+          outright would put that back and leave a screen reader with nothing to
+          announce the page as. `sr-only` keeps it in the accessibility tree and
+          in the document outline while taking it off the screen, which is what
+          was actually asked for: the grid opens on the work. */}
+      <h1 className="sr-only">Collection 01 — Silver &amp; Gold</h1>
+
       {/* Deliberately *not* `Container`. Every measure it offers is a reading
           width — the widest, `shell-xl`, is 1320px and belongs to the product
           page, where two columns of image-plus-text have to stay readable. The
-          grid is not reading width: it is meant to run between the rails and
-          stop only when a seventh column would turn every piece into a
-          thumbnail, which is what `--grid-max` says and what `.grid-frame`
-          applies. Wrapping it in a Container capped the ladder at five columns
-          and made the cap unreachable.
+          grid is not reading width: it runs between the rails and stops when a
+          tile would grow past the size it should ever be, which is what
+          `--grid-max` says and what `.grid-frame` applies. Wrapping it in a
+          Container capped the ladder and made that unreachable.
 
           So this is the container's other half on its own: the page gutter, and
-          nothing else. The heading takes the same frame so it lines up with the
-          first tile. */}
-      <div className="w-full px-gutter-tight">
-        <div className="mx-auto w-full max-w-[var(--grid-max)]">
-          {/* The archive's heading, kept identical in both views. The page had
-              no heading of any level before this line became one — a run of
-              images with nothing above them — and the grid is the same page. */}
-          <Eyebrow as="h1" size="xs">
-            Collection 01 — Silver &amp; Gold
-          </Eyebrow>
-        </div>
-      </div>
-
+          nothing else. */}
       <div className="w-full px-gutter-tight">
         <div className="grid-frame">
           <div

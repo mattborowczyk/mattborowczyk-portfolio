@@ -1,5 +1,8 @@
+"use client";
+
 import CatalogueGrid from "@/components/catalogue-grid";
 import CatalogueRun from "@/components/catalogue-run";
+import { VIEW_FADE_MS, useViewLeaving } from "@/components/page-transition";
 import { type ArchiveView, GRID_VIEW } from "@/lib/site";
 import { type Product } from "@/lib/products";
 
@@ -35,10 +38,24 @@ import { type Product } from "@/lib/products";
  * the media rendering, the hover rules, the ordering — are shared as modules
  * instead, where they can be shared without being entangled.
  *
- * `view` and `filter` both arrive as props rather than being read here, so this
- * never touches `useSearchParams` and can therefore be server-rendered. See
- * `catalogue-view-filtered.tsx` for the half that does read them, and why the
- * two are separate.
+ * ── The half of the view transition that lives here ────────────────────────
+ *
+ * The wrapper below is what fades the arrangement you are leaving. It sits here
+ * rather than inside either view because the fade is not a property of the run
+ * or of the grid — it is a property of *changing between them*, and neither
+ * should have to know the other exists. `page-transition.tsx` owns the other
+ * half: it holds the router push back for `VIEW_FADE_MS` so there is something
+ * left to fade, which React would otherwise have replaced in the same frame.
+ *
+ * The transition is declared **only while leaving**, and that asymmetry is the
+ * point. On the way out the wrapper fades. On the way back in it snaps to full
+ * opacity with no transition at all, so the incoming arrangement's own staggered
+ * entry is the only thing animating — put a fade on the wrapper as well and the
+ * two multiply, which is how the tiles ended up appearing, disappearing and
+ * then appearing again.
+ *
+ * `view` and `filter` arrive as props rather than being read here, so this
+ * never touches `useSearchParams`. See `catalogue-view-filtered.tsx`.
  */
 export default function CatalogueView({
   products,
@@ -51,8 +68,20 @@ export default function CatalogueView({
   filter: string;
   email: string;
 }) {
-  if (view === GRID_VIEW) {
-    return <CatalogueGrid products={products} filter={filter} />;
-  }
-  return <CatalogueRun products={products} filter={filter} email={email} />;
+  const leaving = useViewLeaving();
+
+  return (
+    <div
+      style={{
+        opacity: leaving ? 0 : 1,
+        transition: leaving ? `opacity ${VIEW_FADE_MS}ms ease` : "none",
+      }}
+    >
+      {view === GRID_VIEW ? (
+        <CatalogueGrid products={products} filter={filter} />
+      ) : (
+        <CatalogueRun products={products} filter={filter} email={email} />
+      )}
+    </div>
+  );
 }
