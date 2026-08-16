@@ -1,10 +1,20 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import CatalogueGrid from "@/components/catalogue-grid";
 import CatalogueRun from "@/components/catalogue-run";
-import { VIEW_FADE_MS, useViewLeaving } from "@/components/page-transition";
 import { type ArchiveView, GRID_VIEW } from "@/lib/site";
 import { type Product } from "@/lib/products";
+
+/**
+ * How long the outgoing arrangement fades before the other one replaces it.
+ *
+ * Much shorter than a route change. This is not a journey between pages — it is
+ * the same pieces rearranging, and the visitor asked for it by clicking a
+ * toggle, so every millisecond here is latency they can feel.
+ */
+const VIEW_FADE_MS = 220;
 
 /**
  * A note on `next/dynamic`, which this deliberately does **not** use.
@@ -38,21 +48,27 @@ import { type Product } from "@/lib/products";
  * the media rendering, the hover rules, the ordering — are shared as modules
  * instead, where they can be shared without being entangled.
  *
- * ── The half of the view transition that lives here ────────────────────────
+ * ── Why the whole view transition lives here ───────────────────────────────
  *
- * The wrapper below is what fades the arrangement you are leaving. It sits here
- * rather than inside either view because the fade is not a property of the run
- * or of the grid — it is a property of *changing between them*, and neither
- * should have to know the other exists. `page-transition.tsx` owns the other
- * half: it holds the router push back for `VIEW_FADE_MS` so there is something
- * left to fade, which React would otherwise have replaced in the same frame.
+ * This component renders one arrangement behind the other, so `view` changing
+ * is not immediately obeyed: the arrangement already on screen keeps rendering
+ * while it fades, and only then does the other one take its place.
  *
- * The transition is declared **only while leaving**, and that asymmetry is the
- * point. On the way out the wrapper fades. On the way back in it snaps to full
- * opacity with no transition at all, so the incoming arrangement's own staggered
- * entry is the only thing animating — put a fade on the wrapper as well and the
- * two multiply, which is how the tiles ended up appearing, disappearing and
- * then appearing again.
+ * It used to be split in two — the router push held back in
+ * `page-transition.tsx` while a flag there drove the fade — and that split was
+ * the bug. Clearing the flag and pushing are two separate state changes, and
+ * React commits the first without waiting for the router to render the second,
+ * so for a frame or two the wrapper was back at full opacity while it still
+ * held the *old* arrangement. The outgoing view flashed back into view right
+ * before being replaced, which is the one thing a cross-fade must not do.
+ *
+ * Swapping and un-fading in the same `setTimeout` makes them one commit. There
+ * is no window between them for anything to be seen in.
+ *
+ * The scroll comes with the swap for the same reason. The two arrangements
+ * differ in height by roughly ten to one, so there is no position worth
+ * preserving; doing it here means it happens at the moment the page is at
+ * opacity 0, and nobody sees it move.
  *
  * `view` and `filter` arrive as props rather than being read here, so this
  * never touches `useSearchParams`. See `catalogue-view-filtered.tsx`.
@@ -68,16 +84,42 @@ export default function CatalogueView({
   filter: string;
   email: string;
 }) {
-  const leaving = useViewLeaving();
+  // The arrangement actually on screen, which lags `view` by one fade.
+  const [shown, setShown] = useState(view);
+  const [fading, setFading] = useState(false);
+
+  useEffect(() => {
+    if (view === shown) {
+      // Not merely an early return. Changing your mind mid-fade — clicking the
+      // toggle and clicking straight back — cancels the timeout below before it
+      // can swap anything, and lands here with `view` already equal to `shown`.
+      // Without this the fade is never called off and the archive stays at
+      // opacity 0 for good. A no-op when it is already false.
+      setFading(false);
+      return;
+    }
+    setFading(true);
+    const swap = setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: "instant" });
+      setShown(view);
+      setFading(false);
+    }, VIEW_FADE_MS);
+    return () => clearTimeout(swap);
+  }, [view, shown]);
 
   return (
     <div
       style={{
-        opacity: leaving ? 0 : 1,
-        transition: leaving ? `opacity ${VIEW_FADE_MS}ms ease` : "none",
+        opacity: fading ? 0 : 1,
+        // Declared only while leaving. On the way back in the wrapper snaps to
+        // full opacity with no transition at all, so the incoming arrangement's
+        // own staggered entry is the only thing animating — put a fade here too
+        // and the two multiply, which is what made the tiles appear, disappear
+        // and appear again.
+        transition: fading ? `opacity ${VIEW_FADE_MS}ms ease` : "none",
       }}
     >
-      {view === GRID_VIEW ? (
+      {shown === GRID_VIEW ? (
         <CatalogueGrid products={products} filter={filter} />
       ) : (
         <CatalogueRun products={products} filter={filter} email={email} />
