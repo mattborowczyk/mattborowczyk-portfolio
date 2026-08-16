@@ -122,7 +122,7 @@ export default function AppShell({
           Column flex with a growing `main` puts the slack in the one place it
           belongs. Nothing else needs to change: the footer keeps its own top
           margin as a minimum separation for pages that *are* long enough. */}
-      <div className="flex min-h-screen flex-col pt-topbar-draft nav:pt-draft nav:pl-rail nav:pr-rail-right">
+      <div className="flex min-h-screen flex-col pt-topbar-draft nav:pt-draft nav:pl-rail nav:pb-footer nav:pr-rail-right">
         {/* Every page begins at the same height, and it is set here rather than
             by each page, so the answer cannot drift page by page — it used to,
             and the catalogue, the product page and Contact all opened on a

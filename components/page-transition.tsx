@@ -100,39 +100,6 @@ export function usePageLeavingHref() {
   return useContext(LeavingContext).href;
 }
 
-/**
- * Set by the in-place branch below when a click changes `?view=`, and read once
- * by the arrangement that click mounts.
- *
- * The archive's two views stagger their contents in when you switch between
- * them, and must not do so on a cold load — there the stagger would be the only
- * thing standing between the largest tile and the paint, pushing LCP out by its
- * own duration on the route whose budget is tightest.
- *
- * Deriving that from `pageHasMounted` was the obvious thing and was wrong twice
- * over. It is read during render, and the arrangement sits *inside* the page's
- * Suspense boundary — so the server renders it with the flag still false while
- * the client does not reach it until `PageFade` has mounted and set the flag
- * true, which is a hydration mismatch on every tile. And it answers the wrong
- * question: "has anything been mounted before" is not "did the visitor just ask
- * for a different arrangement".
- *
- * A click is. Nothing sets this on the server, and nothing has clicked anything
- * during hydration, so both sides agree by construction; it can only ever
- * become true on a mount that no server render is paired with.
- *
- * Consumed rather than merely read: the flag describes one transition, and a
- * second view mounted later (a filter change re-running the tree, say) has no
- * claim on it.
- */
-let viewJustChanged = false;
-
-export function consumeViewChange() {
-  const changed = viewJustChanged;
-  viewJustChanged = false;
-  return changed;
-}
-
 /** Whether the visitor has asked for less motion. */
 function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -333,29 +300,13 @@ export function PageTransitionProvider({
         setLeaving(false);
         setLeavingHref(null);
 
-        // `scroll: false` on both branches below. A filter must not move the
-        // scroll at all — the pieces being filtered are exactly what you were
-        // looking at. A view change must, but not here: it belongs with the
-        // swap, which happens a fade later in `CatalogueView`, at the moment
-        // the page is at opacity 0 and nothing can be seen moving. Next's own
-        // reset would run after the new view had painted, and with
-        // `scroll-behavior: smooth` set globally it would animate in full view.
-        const changesView =
-          new URL(location.href).searchParams.get("view") !==
-          inPlace.searchParams.get("view");
-
-        // Read by whichever arrangement this click eventually mounts — see
-        // `consumeViewChange`. Set here rather than inferred there because this
-        // is the only place that knows a *view* changed, as opposed to a
-        // filter, a route, or a re-render.
-        //
-        // The push itself is not held back for it. `CatalogueView` keeps
-        // rendering the arrangement already on screen while it fades and swaps
-        // when it is ready, so the URL leading the content by a fade is
-        // deliberate — and holding the push here instead is what produced a
-        // frame of the outgoing view flashing back before it was replaced.
-        // Scrolling belongs with the swap for the same reason, and lives there.
-        if (changesView) viewJustChanged = true;
+        // `scroll: false` unconditionally. A filter must not move the scroll at
+        // all — the pieces being filtered are exactly what you were looking at.
+        // A view change must, but not here: it belongs with the swap, which
+        // happens a fade later in `CatalogueView`, at the moment the page is at
+        // opacity 0 and nothing can be seen moving. Next's own reset would run
+        // after the new view had painted, and with `scroll-behavior: smooth`
+        // set globally it would animate in full view.
 
         // Hash included: nothing on the site pairs one with a query today, but
         // the route branch below preserves it and a silent difference between

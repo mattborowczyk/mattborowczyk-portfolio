@@ -147,7 +147,12 @@ export default function NewsletterCard({
     // the end of the document should be told what it is before its heading.
     <section
       aria-label="Newsletter"
-      className="animate-mbnl fixed bottom-6 right-6 z-[200] w-[min(88vw,18.25rem)] bg-card shadow-card"
+      // `bottom-6` on mobile, where the footer is in normal flow and scrolls
+      // away with the page. From the `nav` breakpoint the footer is fixed
+      // across the bottom of the viewport, so the card has to clear it or it
+      // sits over the studio email and the copyright line — the card is
+      // z-200 and would win.
+      className="animate-mbnl fixed bottom-6 right-6 z-[200] w-[min(88vw,18.25rem)] bg-card shadow-card nav:bottom-[calc(var(--footer-height)+1.5rem)]"
     >
       <div className="relative flex flex-col gap-4 p-md">
         {/* The glyph is 7×11px, which was the whole target — under half the

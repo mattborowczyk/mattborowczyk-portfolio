@@ -186,6 +186,12 @@
     --hover-card-width: clamp(10.5rem, 18vw, 14.75rem);
     --hover-card-overlap: 2.5rem;
     --topbar-height: 7.25rem; /* 116px — mobile bar + breathing room */
+    /* The footer strip's height, which the content has to be padded by on
+       desktop because the footer is fixed there rather than in flow. One line
+       of 10px mono between `py-lg` above and below, plus its hairline. Measured
+       rather than guessed; if the strip ever gains a line, this moves with it or
+       the last of the content goes under it. */
+    --footer-height: 5rem; /* 80px */
 
     /* ── Catalogue grid ────────────────────────────────────────────────
        The composed lattice at `/?view=grid`. Compositions live in
@@ -451,6 +457,19 @@
       var(--rs) * var(--col) / var(--ar) + (var(--rs) - 1) * var(--grid-gap-y)
     );
     overflow: hidden;
+  }
+
+  /* While the grid is working out how wide it is, nothing animates.
+
+     Container queries are answered after layout, so the first style pass uses
+     the two-column fallback and the second corrects it. Left alone, that
+     correction runs through the transitions below — every tile slides from
+     where it never really was, and the grid resizes under them. These rules
+     out-specify the transitions rather than fighting them with `!important`. */
+  .piece-grid[data-settling],
+  .piece-grid[data-settling] .piece-tile,
+  .piece-grid[data-settling] .piece-tile-body {
+    transition: none;
   }
 
   @container (min-width: 28rem) {

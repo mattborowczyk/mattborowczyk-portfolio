@@ -6,6 +6,7 @@ import CatalogueGrid from "@/components/catalogue-grid";
 import CatalogueRun from "@/components/catalogue-run";
 import { type ArchiveView, GRID_VIEW } from "@/lib/site";
 import { type Product } from "@/lib/products";
+import { cn } from "@/lib/utils";
 
 /**
  * How long the outgoing arrangement fades before the other one replaces it.
@@ -48,27 +49,31 @@ const VIEW_FADE_MS = 220;
  * the media rendering, the hover rules, the ordering — are shared as modules
  * instead, where they can be shared without being entangled.
  *
- * ── Why the whole view transition lives here ───────────────────────────────
+ * ── The view transition, whole ─────────────────────────────────────────────
  *
- * This component renders one arrangement behind the other, so `view` changing
- * is not immediately obeyed: the arrangement already on screen keeps rendering
- * while it fades, and only then does the other one take its place.
+ * One arrangement fades out, the other fades in. Nothing moves, nothing
+ * resizes: the two are different enough that animating *between* them says
+ * nothing true about either, and reads as the page rearranging itself rather
+ * than as you choosing a different way to look at the same work.
  *
- * It used to be split in two — the router push held back in
- * `page-transition.tsx` while a flag there drove the fade — and that split was
- * the bug. Clearing the flag and pushing are two separate state changes, and
- * React commits the first without waiting for the router to render the second,
- * so for a frame or two the wrapper was back at full opacity while it still
- * held the *old* arrangement. The outgoing view flashed back into view right
- * before being replaced, which is the one thing a cross-fade must not do.
+ * All of it lives here, and that is the fix for a flicker rather than a
+ * preference. It used to be split — the router push held back in
+ * `page-transition.tsx` while a flag there drove the fade — and clearing that
+ * flag and pushing are two separate state changes in two places. React commits
+ * the first without waiting for the router to render the second, so for a frame
+ * or two the wrapper was back at full opacity while it still held the *old*
+ * arrangement, and the outgoing view flashed before being replaced. Swapping
+ * and un-fading in the same callback makes them one commit, with no window
+ * between them for anything to be seen in.
  *
- * Swapping and un-fading in the same `setTimeout` makes them one commit. There
- * is no window between them for anything to be seen in.
+ * The exit is an inline opacity transition; the entry is a keyframe with `both`
+ * fill, restarted by keying the wrapper on what it holds. That asymmetry is
+ * deliberate: an entry driven by script is invisible in exactly the cases
+ * script does not run on schedule, and a keyframe needs nothing to finish.
  *
- * The scroll comes with the swap for the same reason. The two arrangements
- * differ in height by roughly ten to one, so there is no position worth
- * preserving; doing it here means it happens at the moment the page is at
- * opacity 0, and nobody sees it move.
+ * The scroll comes with the swap. The two arrangements differ in height by
+ * roughly ten to one, so there is no position worth preserving; doing it at the
+ * swap means it happens while the page is at opacity 0 and nobody sees it move.
  *
  * `view` and `filter` arrive as props rather than being read here, so this
  * never touches `useSearchParams`. See `catalogue-view-filtered.tsx`.
@@ -87,6 +92,10 @@ export default function CatalogueView({
   // The arrangement actually on screen, which lags `view` by one fade.
   const [shown, setShown] = useState(view);
   const [fading, setFading] = useState(false);
+  // False until the first swap, so a cold load paints its arrangement outright.
+  // An entry animation on first load would hold the largest element back from
+  // painting for its whole duration, on the route with the tightest budget.
+  const [swapped, setSwapped] = useState(false);
 
   useEffect(() => {
     if (view === shown) {
@@ -103,19 +112,24 @@ export default function CatalogueView({
       window.scrollTo({ top: 0, behavior: "instant" });
       setShown(view);
       setFading(false);
+      setSwapped(true);
     }, VIEW_FADE_MS);
     return () => clearTimeout(swap);
   }, [view, shown]);
 
   return (
     <div
+      // Keyed on what it holds, so each swap is a fresh element and the entry
+      // keyframe runs again rather than being a finished animation on a node
+      // that already played it.
+      key={shown}
+      className={cn(swapped && "animate-mbfade")}
       style={{
         opacity: fading ? 0 : 1,
-        // Declared only while leaving. On the way back in the wrapper snaps to
-        // full opacity with no transition at all, so the incoming arrangement's
-        // own staggered entry is the only thing animating — put a fade here too
-        // and the two multiply, which is what made the tiles appear, disappear
-        // and appear again.
+        // Declared only while leaving. The entry is the keyframe above; putting
+        // a transition here as well would give the incoming arrangement two
+        // fades at once, which multiply into something slower and muddier than
+        // either of them says.
         transition: fading ? `opacity ${VIEW_FADE_MS}ms ease` : "none",
       }}
     >

@@ -5,10 +5,7 @@ import Link from "next/link";
 
 import PieceMedia, { useHoverCapable } from "@/components/piece-media";
 import RenderPlaceholder from "@/components/render-placeholder";
-import {
-  consumeViewChange,
-  usePageLeavingHref,
-} from "@/components/page-transition";
+import { usePageLeavingHref } from "@/components/page-transition";
 import {
   type GridPlacement,
   gridPatterns,
@@ -17,7 +14,6 @@ import {
 } from "@/lib/grid-pattern";
 import { ALL_PIECES } from "@/lib/site";
 import { type Product, altToneFor, toneFor } from "@/lib/products";
-import { cn } from "@/lib/utils";
 
 /**
  * The composed grid: the same pieces as the run, in the same order, arranged as
@@ -127,10 +123,8 @@ const FILTER_REVEAL_DELAY_MS = MOVE_MS;
  */
 const REFLOW_MS = MOVE_MS + 350;
 
-/** The arrival, when the view is switched or a filter reveals pieces again. */
+/** The arrival, when a filter reveals pieces again. */
 const ENTER_FADE_MS = 350;
-const ENTER_STAGGER_MS = 22;
-const ENTER_STAGGER_CAP_MS = 260;
 
 /** The `/product/…` this navigation is heading to, if it is heading to one. */
 function targetRef(href: string | null): string | null {
@@ -156,7 +150,6 @@ function Tile({
   isHovered,
   priority,
   canHover,
-  enterDelayMs,
   onRef,
   onEnter,
   onLeave,
@@ -172,8 +165,6 @@ function Tile({
   isHovered: boolean;
   priority: boolean;
   canHover: boolean;
-  /** Stagger offset for the entry keyframe, or null for no entry animation. */
-  enterDelayMs: number | null;
   onRef: (el: HTMLDivElement | null) => void;
   onEnter: () => void;
   onLeave: () => void;
@@ -223,20 +214,8 @@ function Tile({
   return (
     <div
       ref={onRef}
-      // `animate-mbfade` is the site's existing entry keyframe (opacity, `both`
-      // fill), reused rather than reinvented so the grid arrives at the same
-      // rate everything else on the site does. The delay is what makes it a
-      // stagger. Reduced motion is already handled globally — the blanket reset
-      // in globals.css collapses both duration and delay with `!important`.
-      className={cn("piece-tile", enterDelayMs !== null && "animate-mbfade")}
-      style={
-        {
-          ...vars,
-          ...(enterDelayMs !== null && {
-            animationDelay: `${enterDelayMs}ms`,
-          }),
-        } as React.CSSProperties
-      }
+      className="piece-tile"
+      style={vars as React.CSSProperties}
       onMouseEnter={interactive ? onEnter : undefined}
       onMouseLeave={interactive ? onLeave : undefined}
       // focusin/focusout underneath, so this catches focus arriving anywhere
@@ -460,6 +439,32 @@ export default function CatalogueGrid({
    * nothing to move from, and delaying the first paint of every tile is exactly
    * the LCP mistake the entry animation is careful to avoid.
    */
+  /**
+   * True for the first moments after mount, while the layout is still resolving.
+   *
+   * Container queries cannot be answered before layout, so the browser styles
+   * once with the fallback (`--cols: 2` and the two-column placements), lays
+   * out, discovers how wide the frame actually is, and styles again. Every tile
+   * therefore moves from its two-column position to its real one — and since
+   * `.piece-tile` transitions `transform` and `.piece-grid` transitions
+   * `height`, that correction *animated*. Tiles visibly slid into place and the
+   * grid resized under them, most obviously on a view change, where the grid
+   * mounts fresh.
+   *
+   * Nothing is animating between two states there; the first was never a state,
+   * only a step in working out the second. So transitions are off until it has
+   * settled — see the `[data-settling]` rules in globals.css — and the grid
+   * simply appears at its real size.
+   *
+   * If the timer below never fires, transitions stay off. That is the right way
+   * round to fail: no animation, everything in the correct place.
+   */
+  const [settling, setSettling] = useState(true);
+  useEffect(() => {
+    const done = setTimeout(() => setSettling(false), 60);
+    return () => clearTimeout(done);
+  }, []);
+
   const [reflowing, setReflowing] = useState(false);
   const [seenFilter, setSeenFilter] = useState(filter);
   if (seenFilter !== filter) {
@@ -490,32 +495,6 @@ export default function CatalogueGrid({
     const settle = setTimeout(() => setHeldRows(neededRows), REFLOW_MS);
     return () => clearTimeout(settle);
   }, [neededRows]);
-
-  /**
-   * Whether this grid is here because the visitor just switched to it — the one
-   * case that earns an entry stagger. See `consumeViewChange`.
-   *
-   * Read once, in the initialiser, and never written again: the value cannot
-   * change for the life of this grid, so there is no state machine, no effect,
-   * and nothing for a re-render to disturb.
-   *
-   * The stagger itself is a **CSS animation**, not an opacity raised by script,
-   * and that is the second thing this had wrong. An element rendered at
-   * `opacity: 0` and lifted in a `requestAnimationFrame` is invisible in
-   * precisely the cases script does not run on schedule — a background tab,
-   * where rAF is throttled indefinitely, and no-JS entirely. The whole grid
-   * simply stayed blank. A `both`-filled keyframe needs none of that: its
-   * resting state is its last frame, so the worst a stalled main thread can do
-   * is show the finished result immediately, which is the correct picture.
-   * `page-transition.tsx` learned this for the page fade; it applies here for
-   * exactly the same reason.
-   *
-   * The animation goes on the tile while the opacity states below go on the
-   * body inside it, so the two never contend for one property — a filled
-   * animation would otherwise pin every tile opaque and the hover dimming would
-   * silently stop working.
-   */
-  const [entering] = useState(consumeViewChange);
 
   /**
    * How long each tile waits before leaving, once a piece has been clicked.
@@ -590,6 +569,7 @@ export default function CatalogueGrid({
         <div className="grid-frame">
           <div
             className="piece-grid"
+            data-settling={settling ? "" : undefined}
             style={
               Object.fromEntries(
                 heldRows.map((rows, i) => [`--grid-rows-${i + 2}`, rows]),
@@ -645,14 +625,6 @@ export default function CatalogueGrid({
                   isHovered={hovered === product.ref}
                   priority={index === 0}
                   canHover={canHover}
-                  enterDelayMs={
-                    entering
-                      ? Math.min(
-                          (index ?? 0) * ENTER_STAGGER_MS,
-                          ENTER_STAGGER_CAP_MS,
-                        )
-                      : null
-                  }
                   onRef={(el) => {
                     if (el) tileEls.current.set(product.ref, el);
                     else tileEls.current.delete(product.ref);

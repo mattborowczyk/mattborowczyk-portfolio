@@ -99,6 +99,7 @@ const config: Config = {
         rail: "var(--rail-width)",
         "rail-right": "var(--rail-right-width)",
         topbar: "var(--topbar-height)",
+        footer: "var(--footer-height)",
         // Draft banner: `draft-banner` is its height, `draft` the amount the
         // rest of the chrome has to move out of its way — zero unless draft
         // mode is on. See the Draft banner block in globals.css.
