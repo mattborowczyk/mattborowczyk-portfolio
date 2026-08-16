@@ -96,18 +96,36 @@ const DIM_OPACITY = 0.32;
 const EXIT_FADE_MS = 200;
 const EXIT_STAGGER_MS = 140;
 
-/** The filter: leavers go quickly, survivors follow them into the gaps. */
+/**
+ * A filter change, in three beats: **go, move, then appear.**
+ *
+ * The pieces leaving go first and quickly — they have to, since they are
+ * standing where the survivors are about to land. The survivors then travel,
+ * with no head start of their own, so the movement is the thing you are
+ * watching. Only once they have arrived does anything new fade in.
+ *
+ * That ordering is the whole point. Fading pieces in *while* the grid is still
+ * rearranging means two things compete for attention and neither reads: it
+ * looked like the arrangement was assembling itself out of nothing. Letting the
+ * movement finish first makes the grid resolve into its new shape and *then*
+ * fill up, which is legible as one action with a beginning and an end.
+ *
+ * `MOVE_MS` must match `--duration-slow`, which is what `.piece-tile`
+ * transitions its transform at.
+ */
 const FILTER_FADE_MS = 180;
-const FILTER_MOVE_DELAY_MS = 120;
+const MOVE_MS = 500;
+const FILTER_REVEAL_DELAY_MS = MOVE_MS;
 
 /**
- * How long a filter change takes from the first fade to the last tile settling:
- * the survivors' delay plus their travel (`--duration-slow`, 500ms).
+ * How long a filter change takes end to end — the travel, then the reveal.
  *
- * Used to hold the grid's height open — see `heldRows`. It has to be at least
- * as long as the movement, because it is the movement that must not be clipped.
+ * Used to hold the grid's height open (see `heldRows`) and to keep the reveal
+ * delay from leaking into hover, which shares these timings and must stay
+ * immediate. It has to cover the whole sequence, because the last beat is as
+ * capable of being clipped as the first.
  */
-const REFLOW_MS = FILTER_MOVE_DELAY_MS + 500;
+const REFLOW_MS = MOVE_MS + 350;
 
 /** The arrival, when the view is switched or a filter reveals pieces again. */
 const ENTER_FADE_MS = 350;
@@ -430,6 +448,41 @@ export default function CatalogueGrid({
   );
   const [heldRows, setHeldRows] = useState(neededRows);
 
+  /**
+   * Whether a filter change is currently playing out.
+   *
+   * The reveal delay below cannot simply always be on: the same two properties
+   * carry the hover dimming, and a tile that waits half a second before dimming
+   * reads as the page being broken rather than as choreography. This confines
+   * the delay to the one moment it belongs to.
+   *
+   * Skipped on the first run, which is a mount rather than a change — there is
+   * nothing to move from, and delaying the first paint of every tile is exactly
+   * the LCP mistake the entry animation is careful to avoid.
+   */
+  const [reflowing, setReflowing] = useState(false);
+  const [seenFilter, setSeenFilter] = useState(filter);
+  if (seenFilter !== filter) {
+    // Adjusted during render rather than in an effect, and that is load-bearing
+    // rather than fussy. An effect runs *after* the commit that changed the
+    // filter — so on the one render where the tiles are handed their new
+    // positions and opacities, the flag would still be false, the reveal delay
+    // would be 0, and the pieces coming back would fade in during the movement
+    // instead of after it. Which is the whole thing this exists to prevent.
+    //
+    // React re-runs the component immediately on a set during render, without
+    // committing the first pass, so the flag is true in the same commit as the
+    // change it describes. This is the documented way to derive state from a
+    // changed prop; the alternative is a frame of wrong animation every time.
+    setSeenFilter(filter);
+    setReflowing(true);
+  }
+  useEffect(() => {
+    if (!reflowing) return;
+    const done = setTimeout(() => setReflowing(false), REFLOW_MS);
+    return () => clearTimeout(done);
+  }, [reflowing]);
+
   useEffect(() => {
     setHeldRows((prev) =>
       prev.map((rows, i) => Math.max(rows, neededRows[i] ?? rows)),
@@ -550,6 +603,7 @@ export default function CatalogueGrid({
 
               let motion: TileMotion;
               if (!matched) {
+                // Leaving: gone first, and without waiting for anything.
                 motion = {
                   opacity: 0,
                   fadeMs: FILTER_FADE_MS,
@@ -567,11 +621,14 @@ export default function CatalogueGrid({
                 motion = {
                   opacity: dimmed ? DIM_OPACITY : 1,
                   fadeMs: ENTER_FADE_MS,
-                  fadeDelayMs: 0,
-                  // The survivors of a filter start moving fractionally after
-                  // the leavers start fading, so the two read as one movement
-                  // with a cause rather than as two events at once.
-                  moveDelayMs: FILTER_MOVE_DELAY_MS,
+                  // Held until the travel is over, so a piece the filter brings
+                  // back appears at its new place rather than drifting into it.
+                  // A tile that was already visible has no opacity change for
+                  // this to delay, so it costs it nothing.
+                  fadeDelayMs: reflowing ? FILTER_REVEAL_DELAY_MS : 0,
+                  // No delay: the movement is the first thing that should be
+                  // legible, not the last.
+                  moveDelayMs: 0,
                 };
               }
 
