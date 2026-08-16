@@ -380,6 +380,12 @@
        boundary. */
     overflow: clip;
     overflow-clip-margin: 0.5rem;
+    /* The box only ever closes up *after* a filter has finished rearranging —
+       `heldRows` in catalogue-grid.tsx keeps it open until then, so nothing is
+       clipped mid-movement. By the time this runs there is nothing left to see
+       inside the space being reclaimed, and the transition is what stops the
+       page under the grid jumping up by several hundred pixels in one frame. */
+    transition: height var(--duration-slow) ease;
   }
 
   .piece-tile {

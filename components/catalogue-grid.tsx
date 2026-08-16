@@ -100,6 +100,15 @@ const EXIT_STAGGER_MS = 140;
 const FILTER_FADE_MS = 180;
 const FILTER_MOVE_DELAY_MS = 120;
 
+/**
+ * How long a filter change takes from the first fade to the last tile settling:
+ * the survivors' delay plus their travel (`--duration-slow`, 500ms).
+ *
+ * Used to hold the grid's height open — see `heldRows`. It has to be at least
+ * as long as the movement, because it is the movement that must not be clipped.
+ */
+const REFLOW_MS = FILTER_MOVE_DELAY_MS + 500;
+
 /** The arrival, when the view is switched or a filter reveals pieces again. */
 const ENTER_FADE_MS = 350;
 const ENTER_STAGGER_MS = 22;
@@ -393,6 +402,43 @@ export default function CatalogueGrid({
   const matchedCount = matchedOrder.size;
 
   /**
+   * The row count the grid is *drawn* at, which is not always the row count the
+   * matching pieces need.
+   *
+   * `.piece-grid` clips its overflow, and it has to: a piece the filter excludes
+   * keeps its last position so it can fade out where it stood, and a position
+   * left behind by a taller arrangement sits below a shorter one — without
+   * clipping, a filter would leave a stretch of empty scroll under the page.
+   *
+   * But the height was collapsing the instant the filter changed, while those
+   * pieces were still fading and the survivors were still travelling. Anything
+   * below the new height was cut off mid-animation rather than fading, and going
+   * the other way the incoming pieces slid in from beyond that edge, which is
+   * exactly what it looked like: tiles disappearing and reappearing out of
+   * nowhere rather than a grid rearranging.
+   *
+   * So the height only ever grows immediately, and shrinks a beat later. Growing
+   * at once means an arrangement gaining pieces has room for them before they
+   * arrive; shrinking after `REFLOW_MS` means everything that had to leave has
+   * left, and everything that had to move has arrived, before the box closes up
+   * behind them. The collapse itself is transitioned in CSS, so it reads as the
+   * grid settling rather than as a jump.
+   */
+  const neededRows = useMemo(
+    () => GRID_PATTERNS.map((pattern) => rowCount(pattern, matchedCount)),
+    [GRID_PATTERNS, matchedCount],
+  );
+  const [heldRows, setHeldRows] = useState(neededRows);
+
+  useEffect(() => {
+    setHeldRows((prev) =>
+      prev.map((rows, i) => Math.max(rows, neededRows[i] ?? rows)),
+    );
+    const settle = setTimeout(() => setHeldRows(neededRows), REFLOW_MS);
+    return () => clearTimeout(settle);
+  }, [neededRows]);
+
+  /**
    * Whether this grid is here because the visitor just switched to it — the one
    * case that earns an entry stagger. See `consumeViewChange`.
    *
@@ -493,10 +539,7 @@ export default function CatalogueGrid({
             className="piece-grid"
             style={
               Object.fromEntries(
-                GRID_PATTERNS.map((pattern, i) => [
-                  `--grid-rows-${i + 2}`,
-                  rowCount(pattern, matchedCount),
-                ]),
+                heldRows.map((rows, i) => [`--grid-rows-${i + 2}`, rows]),
               ) as React.CSSProperties
             }
           >
