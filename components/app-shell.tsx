@@ -108,14 +108,35 @@ export default function AppShell({
           wordmark, no menu, no mobile bar until the bundle hydrated. The
           boundary now sits inside `SiteNav`, around the filter list alone. */}
       <SiteNav settings={settings} />
-      <div className="min-h-screen pt-topbar-draft nav:pt-draft nav:pl-rail nav:pr-rail-right">
+      {/* A flex column, so the footer is held at the bottom of the viewport on
+          a page too short to reach it.
+
+          `min-h-screen` alone was never enough, and the reason is worth stating
+          because the class makes it look solved: it sizes the *box* to a
+          viewport, but in normal flow `main` still takes only its content
+          height and the footer sits immediately after it — so on a short page
+          the leftover space ended up *below* the footer rather than above it,
+          and the footer floated somewhere up the screen. An archive filtered
+          down to two or three pieces showed it plainly.
+
+          Column flex with a growing `main` puts the slack in the one place it
+          belongs. Nothing else needs to change: the footer keeps its own top
+          margin as a minimum separation for pages that *are* long enough. */}
+      <div className="flex min-h-screen flex-col pt-topbar-draft nav:pt-draft nav:pl-rail nav:pr-rail-right">
         {/* Every page begins at the same height, and it is set here rather than
             by each page, so the answer cannot drift page by page — it used to,
             and the catalogue, the product page and Contact all opened on a
             different line. `/links` is outside this branch and keeps its own
             frame: it centres itself in the viewport and has no top edge to
-            share. */}
-        <main {...mainProps} className="pt-section-lg focus:outline-none">
+            share.
+
+            `grow` rather than `flex-1`: the shorthand also sets `flex-basis: 0`,
+            which would make the content's own height stop contributing and hand
+            sizing entirely to the flex algorithm. Growing from `auto` keeps
+            `main` at least as tall as what is in it and lets it take the
+            remainder when there is any — which is the whole of what is wanted
+            here, and leaves long pages measuring exactly as they did. */}
+        <main {...mainProps} className="grow pt-section-lg focus:outline-none">
           {page}
         </main>
         <SiteFooter settings={settings} />

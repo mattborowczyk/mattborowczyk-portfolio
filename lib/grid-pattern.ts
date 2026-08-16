@@ -153,7 +153,7 @@ function pattern(cols: number, rows: readonly string[]): GridPattern {
  */
 const COLUMNS_2 = () => pattern(2, [
   "# .",
-  ". #",
+  "# #",
   "# #",
   ". #",
   "# .",
@@ -189,13 +189,13 @@ const COLUMNS_3 = () => pattern(3, [
  * the band rule below to read as a band rather than as a leftover.
  */
 const COLUMNS_4 = () => pattern(4, [
-  "# . # #", // 1x11
+  "# # . #", // 11x1
   "# . F +",
   ". . + +",
   "# # # .", // 111x
   "F + . #",
   "+ + . .",
-  "# . . #", // 1xx1
+  "# . # #", // 1x11
   "# # . #", // 11x1
 ]);
 
@@ -239,10 +239,11 @@ const COLUMNS_5 = () => pattern(5, [
   "# # . F +",
   ". . . + +",
   "# # # . #", // 111x1
+  "# . . # #", // 1xx11
   "F + . . .",
   "+ + . # #",
-  "# . . # #", // 1xx11
-  "# # . . #", // 11xx1
+  "# # . . #", // 1xx11
+  "# # # # .", // 11xx1
 ]);
 
 /**
