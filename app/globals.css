@@ -411,13 +411,15 @@
     );
     /* Position only. Opacity is transitioned on the body inside, because the
        two want different timings at the same moment: when a filter changes,
-       the pieces leaving fade in 180ms while the pieces staying take 450ms to
-       travel into the gaps they left. One `transition-duration` on one element
-       cannot say both.
+       the pieces leaving fade in 180ms while the pieces staying take the whole
+       500ms of `--duration-slow` to travel into the gaps they left. One
+       `transition-duration` on one element cannot say both.
 
-       `--move-delay` is set from React so the travel starts fractionally after
-       the fade — enough that the two read as cause and effect rather than as
-       one blurred event, not enough to feel like two. */
+       `--move-delay` is set from React and is 0 for every tile as things
+       stand: the travel is what the filter change is meant to be read as, so
+       it starts with the fade rather than a beat after it. The property is
+       still routed through here because the delay is a per-tile decision made
+       in catalogue-grid.tsx (`moveDelayMs`), and this is where it lands. */
     transition-property: transform, width;
     transition-duration: var(--duration-slow);
     transition-delay: var(--move-delay, 0ms);

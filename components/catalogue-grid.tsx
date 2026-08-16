@@ -132,6 +132,13 @@ function targetRef(href: string | null): string | null {
   return decodeURIComponent(href.slice("/product/".length));
 }
 
+/**
+ * A piece's slot in one composition, tagged with the column count that
+ * composition is drawn at — which is what names the CSS custom properties the
+ * container queries read back, so the two cannot be allowed to drift apart.
+ */
+type TilePlacement = GridPlacement & { cols: number };
+
 type TileMotion = {
   opacity: number;
   fadeMs: number;
@@ -158,7 +165,7 @@ function Tile({
   tone: string;
   altTone: string;
   /** Slot in each of `GRID_PATTERNS`, in the same order. */
-  placements: GridPlacement[];
+  placements: TilePlacement[];
   motion: TileMotion;
   /** False for a piece the filter excludes: invisible, and out of reach. */
   interactive: boolean;
@@ -201,9 +208,14 @@ function Tile({
     "--fade-delay": `${motion.fadeDelayMs}ms`,
     "--move-delay": `${motion.moveDelayMs}ms`,
   };
-  placements.forEach((slot, i) => {
-    // 2, 3, 4, 5, 6 — the ladder in globals.css, which reads these back.
-    const cols = i + 2;
+  placements.forEach((slot) => {
+    // 2, 3, 4, 5, 6 — the ladder in globals.css, which reads these back. Taken
+    // from the composition the slot came out of rather than from its position
+    // in the list: the two agree today, and if a column count is ever added,
+    // removed or reordered in grid-pattern.ts, position would quietly start
+    // naming the wrong step of the ladder while cols keeps naming the right
+    // one. The ladder in globals.css still has to be changed by hand to match.
+    const { cols } = slot;
     vars[`--c-${cols}`] = String(slot.col);
     vars[`--r-${cols}`] = String(slot.row);
     vars[`--cs-${cols}`] = String(slot.colSpan);
@@ -320,11 +332,18 @@ function Tile({
                 catalogue predates this field, and "nobody has said" is not the
                 same claim as "not unique". */}
             {product.unique === true && (
+              // "1/1" is a jeweller's mark, and it is one to the eye only: read
+              // aloud it is "one slash one", which says nothing. So the numeral
+              // is the sighted half and the words are the other half of the
+              // same label, and each audience gets exactly one of them. `title`
+              // stays for the pointer, where a tooltip is the only affordance
+              // going.
               <span
                 className="shrink-0 font-mono text-2xs uppercase tracking-wide-md text-label-lighter"
                 title="One of a kind"
               >
-                1/1
+                <span aria-hidden="true">1/1</span>
+                <span className="sr-only">One of a kind</span>
               </span>
             )}
           </div>
@@ -383,15 +402,20 @@ export default function CatalogueGrid({
   // fades out where it stood rather than jumping to wherever the new,
   // shorter arrangement would have put it — the fade is the whole of what says
   // "this one is leaving", and a jump underneath it says something else.
-  const lastPlacements = useRef(new Map<string, GridPlacement[]>());
+  const lastPlacements = useRef(new Map<string, TilePlacement[]>());
+
+  const slotsAt = (index: number): TilePlacement[] =>
+    GRID_PATTERNS.map((pattern) => ({
+      ...placement(pattern, index),
+      cols: pattern.cols,
+    }));
 
   const tiles = products.map((product) => {
     const index = matchedOrder.get(product.ref);
     const matched = index !== undefined;
     const placements = matched
-      ? GRID_PATTERNS.map((pattern) => placement(pattern, index))
-      : (lastPlacements.current.get(product.ref) ??
-        GRID_PATTERNS.map((pattern) => placement(pattern, 0)));
+      ? slotsAt(index)
+      : (lastPlacements.current.get(product.ref) ?? slotsAt(0));
     if (matched) lastPlacements.current.set(product.ref, placements);
     return { product, matched, index, placements };
   });
@@ -519,7 +543,13 @@ export default function CatalogueGrid({
     // A navigation to a piece that is not on screen — a filtered-out piece
     // reached some other way. Nothing to stagger outward from, so everything
     // leaves together, which is what the page fade would have done anyway.
-    if (!origin) return;
+    // Cleared rather than merely returned: one navigation can follow another
+    // without passing through `null`, and delays measured from the *previous*
+    // origin would stagger this exit outward from a tile nobody clicked.
+    if (!origin) {
+      setExitDelays(null);
+      return;
+    }
 
     const from = origin.getBoundingClientRect();
     const fx = from.left + from.width / 2;
@@ -570,9 +600,14 @@ export default function CatalogueGrid({
           <div
             className="piece-grid"
             data-settling={settling ? "" : undefined}
+            // Named from each composition's own column count, and every value a
+            // string — both for the reasons spelled out on `vars` in `Tile`.
             style={
               Object.fromEntries(
-                heldRows.map((rows, i) => [`--grid-rows-${i + 2}`, rows]),
+                heldRows.map((rows, i) => [
+                  `--grid-rows-${GRID_PATTERNS[i]?.cols ?? i + 2}`,
+                  String(rows),
+                ]),
               ) as React.CSSProperties
             }
           >

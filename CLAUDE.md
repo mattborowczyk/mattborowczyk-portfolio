@@ -164,7 +164,11 @@ Four rules, each of which was a measured regression before it was a rule. `pnpm 
   nothing else. And the catalogue's hover overlay mounts only behind `(hover: hover) and
   (pointer: fine)`, so a phone doesn't fetch a second full-size image per piece for a state it has no
   way to reach.
-- **A view that is not on screen must not be on the main thread.** See the dynamic import above.
+- **A view that is not on screen must not be on the main thread.** `catalogue-view.tsx` renders
+  one arrangement or the other and never both, so the inactive one costs nothing; and
+  `gridPatterns()` parses its compositions on first use, so the run never pays for the grid's.
+  That is *instead of* a code-split, not alongside one — see the note above, and the one at the
+  call site.
 - **Font weights are declared in `app/layout.tsx` and cost differently per family.** Cormorant is
   variable, so its weights share one file; Plex Mono is static instances, one preloaded file each.
   Only 400/500 Cormorant and 400 Plex Mono are declared, because that is all the site sets. Adding a

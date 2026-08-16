@@ -80,6 +80,13 @@ function objectPosition(item: ProductMedia): string | undefined {
 function OverlayVideo({ item, show }: { item: ProductMedia; show: boolean }) {
   const [mounted, setMounted] = useState(false);
   const [faded, setFaded] = useState(false);
+  // The same rule `BaseVideo` keeps, and for the same reason: a loop with no
+  // end and no pause control is motion a visitor has asked not to be given.
+  // Hover starting it does not change that — the overlay is a second view of
+  // the piece, and the poster is that view held still. The fade below is
+  // unaffected; a reduced-motion visitor gets the cross-fade and a frozen
+  // frame instead of the cross-fade and a loop.
+  const reduced = useReducedMotion();
 
   useEffect(() => {
     if (show) {
@@ -96,10 +103,20 @@ function OverlayVideo({ item, show }: { item: ProductMedia; show: boolean }) {
       setFaded(false);
       return;
     }
-    // One frame after mount, so there is a rendered opacity of 0 to animate
-    // from rather than a first paint that is already opaque.
-    const frame = requestAnimationFrame(() => setFaded(true));
-    return () => cancelAnimationFrame(frame);
+    // Two frames after mount, so there is a *painted* opacity of 0 to animate
+    // from rather than a first paint that is already opaque. One is not enough:
+    // a rAF callback runs before the paint it is queued ahead of, so the state
+    // it sets can be committed into that very same paint — the element would
+    // then first appear at opacity 1 and there would be nothing to transition.
+    // The second frame is what puts a rendered 0 on screen first.
+    let second = 0;
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => setFaded(true));
+    });
+    return () => {
+      cancelAnimationFrame(first);
+      cancelAnimationFrame(second);
+    };
   }, [mounted, show]);
 
   if (!mounted) return null;
@@ -108,7 +125,12 @@ function OverlayVideo({ item, show }: { item: ProductMedia; show: boolean }) {
     <video
       src={item.url}
       poster={item.poster}
-      autoPlay
+      autoPlay={!reduced}
+      // Re-asserted for playback we did not start — a UA resuming a muted
+      // inline video on its own, as in `BaseVideo`.
+      onPlay={(e) => {
+        if (reduced) e.currentTarget.pause();
+      }}
       loop
       muted
       playsInline

@@ -16,13 +16,15 @@ simulated Slow 4G):
 | `/product/[ref]`  | 96   | 0.8 s | 2.8 s | 30 ms | 0   | 304 KiB  |
 | `/course`         | 97   | 0.8 s | 2.6 s | 60 ms | 0   | 276 KiB  |
 
-`/?view=grid` is the archive's other arrangement, added 2026-08-15. It is
-audited because Site Settings decides which of the two a bare `/` renders,
-without a deploy — so the one that is *not* the default can drift over budget
-and nothing would say so, and which one that is can change between two runs of
-the same commit.
+`/?view=grid` is the archive's other arrangement, added 2026-08-15. Both
+arrangements are named outright in the route list — `/?view=archive` as well as
+`/?view=grid` — because Site Settings decides which of the two a bare `/`
+renders, without a deploy. Left to `/`, whichever arrangement is not the default
+could drift over budget and nothing would say so, and when the grid is the
+default `/` and `/?view=grid` are the same page. `/` is still audited on its own
+as the address visitors actually load.
 
-### Re-measured 2026-08-15, and what it showed
+## Re-measured 2026-08-15, and what it showed
 
 The table above is from 2026-08-10 and **has drifted**. Measured again on
 2026-08-15, `main` itself is over the LCP line on two routes:
@@ -47,7 +49,7 @@ wider than the ±0.3 s claimed above, not that anything got faster. What the
 numbers do support is the narrower claim: adding the grid did not make the
 existing routes worse.
 
-### Two things the grid learned the hard way
+## Two things the grid learned the hard way
 
 **Measure against a server you have proved is serving the build you think.**
 Every number in the first pass of this work was wrong, in both directions,
@@ -66,7 +68,7 @@ as CLS 0.13 on a route that is otherwise 0, and as an LCP whose image had
 arrived in 69 ms and then waited 2.6 s to paint. The note in
 `components/catalogue-view.tsx` says so at the call site.
 
-### The lever, when the grid is over budget
+## The lever, when the grid is over budget
 
 The compositions in `lib/grid-pattern.ts`, and the **first row of the narrowest
 one** before anything else. A void costs nothing to paint, so an opening row's
