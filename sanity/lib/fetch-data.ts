@@ -43,8 +43,12 @@ import {
 } from "@/lib/content";
 import {
   ALL_PIECES,
+  ARCHIVE_VIEW,
+  type ArchiveView,
+  resolveView,
   site as seedSite,
   categories as seedCategories,
+  usedCategories,
 } from "@/lib/site";
 
 /**
@@ -109,7 +113,16 @@ function productMedia(media: ProductMediaResult[] | undefined): ProductMedia[] {
       const isVideo =
         item.type === "file" || Boolean(item.mime?.startsWith("video/"));
       const isAnimated = isVideo || item.mime === "image/gif";
+      // The focal point of whichever image actually paints: the still itself,
+      // or a clip's poster frame. Passed through as fractions for
+      // `object-position` — see the note on `ProductMedia.focus`, which
+      // explains why the hotspot could not do this job through `urlFor` alone.
+      const hotspot = isVideo ? item.poster?.hotspot : item.hotspot;
       return {
+        ...(typeof hotspot?.x === "number" &&
+          typeof hotspot?.y === "number" && {
+            focus: { x: hotspot.x, y: hotspot.y },
+          }),
         // A poster only means anything on a clip; on a still the browser has
         // the image itself and there is nothing to stand in for. Resolved
         // exactly as a still is, hotspot and crop included — the schema gives
@@ -424,7 +437,16 @@ export type SiteSettings = {
   email: string;
   instagram: string;
   footer: string;
+  /**
+   * The filter taxonomy the rail should offer: the CMS list, narrowed to
+   * categories that actually have pieces. Narrowed here rather than at each
+   * call site so the rail, the run and `resolveFilter` cannot disagree about
+   * what a valid filter is — they derived it separately once before, and an
+   * unrecognised filter showed every piece while highlighting nothing.
+   */
   categories: readonly string[];
+  /** Which arrangement a bare visit to `/` renders. */
+  defaultView: ArchiveView;
   /**
    * Whether /course is live. Defaults to on when the CMS has never been asked,
    * so an older settings document (or no Sanity at all) keeps the page rather
@@ -449,11 +471,41 @@ const seedSettings: SiteSettings = {
   instagram: seedSite.instagram,
   footer: seedSite.footer,
   categories: seedCategories,
+  defaultView: ARCHIVE_VIEW,
   courseEnabled: true,
   maintenance: seedMaintenance,
 };
 
-export const getSettings = cache(async (): Promise<SiteSettings> =>
+/**
+ * Settings, with the filter taxonomy narrowed to categories that have pieces.
+ *
+ * The narrowing sits outside `withFallback` so it applies on every path — the
+ * seed's taxonomy needs it as much as the CMS's, since the seed also lists
+ * categories no seed piece uses. `getProducts` is `cache()`d and the pages
+ * already call it, so this costs no additional fetch.
+ *
+ * It does mean this getter now depends on the product list, which is worth
+ * naming: under coming-soon mode the layout reads settings and would not
+ * otherwise have asked for products. That page's queries run regardless (Next
+ * renders layout and page in parallel and discards the output — see the note in
+ * CLAUDE.md), so nothing new happens; if the gate is ever moved to middleware
+ * so the work genuinely stops, this is one of the things that has to move too.
+ */
+export const getSettings = cache(async (): Promise<SiteSettings> => {
+  const [settings, products] = await Promise.all([
+    settingsDocument(),
+    getProducts(),
+  ]);
+  return {
+    ...settings,
+    categories: usedCategories(
+      settings.categories,
+      products.map((p) => p.category),
+    ),
+  };
+});
+
+const settingsDocument = cache(async (): Promise<SiteSettings> =>
   withFallback<SiteSettings>(
     async () => {
       const doc = await cmsFetch<SettingsResult>({
@@ -471,6 +523,10 @@ export const getSettings = cache(async (): Promise<SiteSettings> =>
         categories: doc.categories?.length
           ? [ALL_PIECES, ...doc.categories]
           : seedCategories,
+        // Resolved rather than cast: the radio offers two values but binds only
+        // at edit time, so anything at all can be in the document. Unset means
+        // the run, which is what the site showed before the field existed.
+        defaultView: resolveView(ARCHIVE_VIEW, doc.defaultArchiveView),
         // Only an explicit `false` retires the page. `?? true` rather than
         // `=== true` because unset must mean "on" — the opposite default from
         // `maintenanceMode`, where unset must mean "site is up".

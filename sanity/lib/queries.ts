@@ -27,6 +27,7 @@ const productFields = groq`
   type,
   category,
   format,
+  unique,
   material,
   made,
   price,
@@ -242,6 +243,7 @@ export const settingsQuery = groq`
     instagram,
     footer,
     categories,
+    defaultArchiveView,
     coursePageEnabled,
     maintenanceMode,
     maintenanceHeadline,
@@ -256,6 +258,15 @@ export type SettingsResult = {
   instagram?: string;
   footer: string;
   categories?: string[];
+  /**
+   * Typed as a bare string rather than the `ArchiveView` union, because the
+   * union is what the *site* accepts and this is what the CMS happens to hold.
+   * The radio offers two values, but options only bind at edit time — an
+   * API-written or older document can carry anything, and `resolveView`
+   * collapses whatever arrives to the default. Same rule as the `defined()`
+   * filters on the product query.
+   */
+  defaultArchiveView?: string;
   coursePageEnabled?: boolean;
   maintenanceMode?: boolean;
   maintenanceHeadline?: string;

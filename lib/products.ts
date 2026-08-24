@@ -60,6 +60,25 @@ export type ProductMedia = {
    * "video"`.
    */
   poster?: string;
+  /**
+   * The editor's hotspot, as fractions of the image (0–1), ready to hand to
+   * `object-position`. Absent when none was set.
+   *
+   * Worth being precise about why this exists, because it looks redundant next
+   * to `url`. The media pipeline resolves a still through `urlFor(...).width()`
+   * with no height, which produces one derivative at the asset's own ratio —
+   * the hotspot is passed in but has nothing to act on, because there is no
+   * target ratio to crop to. Every frame that shows the piece then crops it in
+   * CSS with `object-cover`, which crops from the *centre* and knows nothing
+   * about the Studio. So a ring photographed high in the frame lost its top
+   * edge in the run, silently, and the hotspot control appeared to do nothing.
+   *
+   * The alternative was a derivative per target ratio, which means the grid
+   * building its own URLs — and components in this codebase never handle an
+   * asset ref. One URL plus a focal point does the same job at every ratio a
+   * slot can ask for, and costs no extra requests.
+   */
+  focus?: { x: number; y: number };
 };
 
 export interface Product {
@@ -88,6 +107,21 @@ export interface Product {
    * filter should show unset pieces under "all" only.
    */
   format?: Format;
+  /**
+   * A one-off: this piece exists once and cannot be remade. Rendered as `1/1`
+   * on the grid tile and in the product page's spec block.
+   *
+   * A boolean rather than an edition number and size, because the site is a
+   * catalogue and not a shop — every piece carries a `Commission →` link, and
+   * "3 of 12" beside an invitation to commission a thirteenth is a
+   * contradiction. What the marker actually distinguishes here is the piece
+   * that cannot be commissioned again from the designs that can.
+   *
+   * Optional, and only an explicit `true` shows anything: every piece in the
+   * dataset predates the field, and unset has to mean "no claim made" rather
+   * than "not unique".
+   */
+  unique?: boolean;
 }
 
 export const products: Product[] = [
@@ -96,7 +130,7 @@ export const products: Product[] = [
   { ref: "SR-03", made: "2026-03-16", name: "Oval", type: "Signet Ring", category: "Rings", material: "Gold", price: "£1,260", weight: "9 g", dimensions: "21 mm", details: "Brushed", leadTime: "3–4 weeks", description: "An elongated oval face, soft at the shoulders." , media: [] },
   { ref: "OB-01", made: "2026-02-20", name: "Ember", type: "Lighter Case", category: "Objects", material: "Silver", price: "£680", weight: "42 g", dimensions: "64×38 mm", details: "Brushed", leadTime: "4–5 weeks", description: "A sliding sleeve for a standard lighter, in brushed silver." , media: [] },
   { ref: "OB-02", made: "2026-01-30", name: "Ember", type: "Lighter Case", category: "Objects", material: "Gold", price: "£2,400", weight: "51 g", dimensions: "64×38 mm", details: "Hand-polished", leadTime: "4–5 weeks", description: "The Ember sleeve cast in solid gold." , media: [] },
-  { ref: "OB-03", made: "2025-12-11", name: "Ingot", type: "Pendant", category: "Objects", material: "Silver", price: "£320", weight: "11 g", dimensions: "32 mm", details: "Hand-polished", leadTime: "3 weeks", description: "A plain cast ingot on a fixed bail." , media: [] },
+  { ref: "OB-03", made: "2025-12-11", name: "Ingot", type: "Pendant", category: "Objects", material: "Silver", price: "£320", weight: "11 g", dimensions: "32 mm", details: "Hand-polished", leadTime: "3 weeks", description: "A plain cast ingot on a fixed bail." , media: [], unique: true },
   { ref: "HW-01", made: "2025-11-05", name: "Span", type: "Belt Buckle", category: "Objects", material: "Silver", price: "£540", weight: "38 g", dimensions: "70×46 mm", details: "Brushed", leadTime: "4–5 weeks", description: "A clean rectangular buckle for a 35 mm strap." , media: [] },
   { ref: "HW-02", made: "2025-10-18", name: "Monolith", type: "Belt Buckle", category: "Objects", material: "Gold", price: "£1,950", weight: "47 g", dimensions: "72×48 mm", details: "Hand-polished", leadTime: "5 weeks", description: "A solid gold buckle with squared edges." , media: [] },
   { ref: "TW-01", made: "2025-09-22", name: "Fold", type: "Napkin Ring", category: "Objects", material: "Silver", price: "£180", weight: "14 g", dimensions: "48 mm", details: "Brushed", leadTime: "2–3 weeks", description: "A folded band that holds a napkin or a note." , media: [] },

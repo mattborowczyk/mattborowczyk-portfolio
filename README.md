@@ -62,15 +62,35 @@ Rate limiting needs no configuration and no credentials — see
 
 | Route | Page | Source |
 | --- | --- | --- |
-| `/` | Catalogue — editorial run, filtered by `?filter=` | `product` |
+| `/` | Catalogue — two arrangements (`?view=`), filtered by `?filter=` | `product` |
 | `/product/[ref]` | Product — media run beside the spec sheet, commission CTA | `product` |
 | `/course` | Course landing — two courses behind a toggle | `course` |
 | `/contact` | Contact + commission explainer (steps + pricing tabs) | `contact` singleton |
 | `/links` | Hidden bio-link hub — not in nav, `noindex` | `links` singleton |
 | `/admin` | Embedded Sanity Studio (the CMS) | — |
 
+The catalogue has **two arrangements of the same pieces in the same order**: the
+editorial *column* (the run — one ordered column, where filtering shrinks
+non-matching pieces in place rather than removing them) and the *grid* (a
+composed lattice with deliberate voids, where filtering removes them and the
+survivors close the gaps). A `View` toggle sits above the filters in the rail
+and carries `?view=`; which one a bare `/` renders is `settings.defaultArchiveView`,
+so it flips from the CMS without a deploy. The default view is always the one
+with **no** param, so there is one canonical address per state — and `/` sets a
+static canonical besides, since otherwise every filter/view pair is separately
+crawlable.
+
+Grid compositions are data, in `lib/grid-pattern.ts`, written as pictures with
+one composition per column count (2 / 3 / 4 / 5 / 6). The grid measures itself
+with container queries rather than viewport media queries, because the rails
+take a fixed 358px out of the viewport and a viewport breakpoint would be wrong
+by a whole column.
+
 Nav is Portfolio / Course / Contact (`pageNav` in `lib/site.ts`), with the
 category filter taxonomy on the left rail (desktop) or in the top bar (mobile).
+The rail lists only categories that **have pieces** — Site Settings keeps the
+full taxonomy as the editing vocabulary, but a filter leading nowhere is never
+offered.
 `components/app-shell.tsx` picks the frame per route: `/links` renders bare,
 everything else — product pages included — rails + offset content + footer.
 
@@ -117,13 +137,23 @@ type.
     every piece predating the field would otherwise open in a validation error
     state, so "unset" is a real value and a future filter must treat it as
     showing only under "all", never as a third bucket.
+  - `unique` marks a one-of-a-kind piece, shown as `1/1` on its grid tile and as
+    "One of a kind (1/1)" in the spec block. A boolean rather than an edition
+    number and size, because the site is a catalogue and not a shop: every piece
+    carries a `Commission →` link, and "3 of 12" beside an invitation to
+    commission a thirteenth is a contradiction. Only an explicit `true` shows
+    anything — like `format`, unset means nobody has said. It is deliberately
+    **not** in the JSON-LD; schema.org `Product` has no edition property, and
+    `lib/structured-data.ts` records why.
   - `category` options are **not** in the same position. The Studio's radio list
     comes from the `categories` fallback in `lib/site.ts`, while the rail and
     `resolveFilter` use the live `settings.categories` from Sanity, so the two
     *can* drift: add a category in Site Settings and it appears as a rail filter
-    that no piece can be assigned to, which shows an empty run with every piece
-    collapsed to a swatch. Until the schema can read the settings document,
-    adding a category means editing `lib/site.ts` too.
+    that no piece can be assigned to. Since the rail now offers only categories
+    that have pieces, such a category is simply absent until the first piece is
+    filed under it — and a hand-typed `?filter=` for it collapses to "All
+    pieces". Until the schema can read the settings document, adding a category
+    means editing `lib/site.ts` too.
   - `ref` uniqueness is enforced by an async validation rule that queries the
     dataset (ignoring the document's own draft/published pair).
 - **`course`** — `key`, `label`, `headline`, `intro`, `price`, `meta`, `level`,
@@ -149,7 +179,8 @@ type.
 - **`newsletter`** — `headline`, `microcopy`.
 - **`settings`** — `name`, `tagline`, `email`, `instagram`, `footer`,
   `categories[]` (the filter taxonomy; the `"All pieces"` reset entry is
-  prepended automatically, so it isn't listed there), `coursePageEnabled`
+  prepended automatically, so it isn't listed there), `defaultArchiveView`
+  (which arrangement a bare `/` shows — see above), `coursePageEnabled`
   (unset counts as on; off both hides the nav entry and makes `/course` a real
   404, and drops it from the sitemap), plus the coming-soon switch:
   `maintenanceMode`, `maintenanceHeadline`, `maintenanceMessage`.

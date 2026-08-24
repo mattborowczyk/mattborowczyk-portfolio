@@ -56,6 +56,22 @@ export const settingsSchema = defineType({
         'Filter taxonomy, in display order. "All pieces" is prepended automatically.',
     }),
     defineField({
+      name: "defaultArchiveView",
+      group: "site",
+      title: "Default archive view",
+      type: "string",
+      options: {
+        list: [
+          { title: "Archive — the run", value: "archive" },
+          { title: "Grid — the composed lattice", value: "grid" },
+        ],
+        layout: "radio",
+      },
+      initialValue: "archive",
+      description:
+        "Which arrangement a visitor arriving at the site sees first. Both are always reachable from the rail; this only decides the default — and the default is the one with a clean URL, so whichever is chosen here becomes the address that gets shared and indexed. Takes up to a minute to appear on the live site.",
+    }),
+    defineField({
       name: "coursePageEnabled",
       group: "site",
       title: "Show the Course page",

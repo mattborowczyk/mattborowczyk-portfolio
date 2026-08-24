@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { cn } from "@/lib/utils";
@@ -29,8 +36,19 @@ const PAGE_FADE_MS = 500;
  */
 const MEDIA_WAIT_CAP_MS = 500;
 
-/** True from the moment a navigation is committed to until the new route lands. */
-const LeavingContext = createContext(false);
+/**
+ * The navigation in flight: true from the moment one is committed to until the
+ * new route lands, alongside where it is going.
+ *
+ * The destination is published as well as the fact, because the grid needs it.
+ * Its exit is not a single fade — the tile you clicked stays while the others
+ * leave around it — and "which tile did they click" is a question only the
+ * href can answer, since the click itself was taken by the document listener
+ * below rather than by anything inside the grid.
+ */
+const LeavingContext = createContext<{ leaving: boolean; href: string | null }>(
+  { leaving: false, href: null },
+);
 
 /**
  * Set just before a router push and read by the `PageFade` that arrives after
@@ -70,7 +88,16 @@ let pageHasMounted = false;
 
 /** Whether a route change is currently fading the page out. */
 export function usePageLeaving() {
-  return useContext(LeavingContext);
+  return useContext(LeavingContext).leaving;
+}
+
+/**
+ * The path a route change in flight is heading to, or `null` when none is.
+ * Pathname only — the destinations this is used to recognise never carry a
+ * query, and comparing one that did against a bare path would silently miss.
+ */
+export function usePageLeavingHref() {
+  return useContext(LeavingContext).href;
 }
 
 /** Whether the visitor has asked for less motion. */
@@ -190,6 +217,9 @@ export function PageTransitionProvider({
   const router = useRouter();
   const pathname = usePathname();
   const [leaving, setLeaving] = useState(false);
+  // Kept beside `leaving` rather than folded into it, so the many places that
+  // only care whether a navigation is happening are unchanged.
+  const [leavingHref, setLeavingHref] = useState<string | null>(null);
   // Guards a second click while a fade is already running: the first has taken
   // the navigation and a second would stack another timer behind it.
   const navigating = useRef(false);
@@ -201,6 +231,7 @@ export function PageTransitionProvider({
   useEffect(() => {
     navigating.current = false;
     setLeaving(false);
+    setLeavingHref(null);
 
     return () => {
       // Only ever non-null if the timer has not fired, because the callback
@@ -267,6 +298,15 @@ export function PageTransitionProvider({
         }
         navigating.current = false;
         setLeaving(false);
+        setLeavingHref(null);
+
+        // `scroll: false` unconditionally. A filter must not move the scroll at
+        // all — the pieces being filtered are exactly what you were looking at.
+        // A view change must, but not here: it belongs with the swap, which
+        // happens a fade later in `CatalogueView`, at the moment the page is at
+        // opacity 0 and nothing can be seen moving. Next's own reset would run
+        // after the new view had painted, and with `scroll-behavior: smooth`
+        // set globally it would animate in full view.
 
         // Hash included: nothing on the site pairs one with a query today, but
         // the route branch below preserves it and a silent difference between
@@ -305,6 +345,7 @@ export function PageTransitionProvider({
       router.prefetch(url.pathname + url.search);
       arrivedByNavigation = true;
       setLeaving(true);
+      setLeavingHref(url.pathname);
 
       pendingNavigation.current = window.setTimeout(() => {
         // Cleared before the push, not after: from here the navigation is
@@ -338,8 +379,16 @@ export function PageTransitionProvider({
     };
   }, [router]);
 
+  // Memoised: this object is the context value, and a fresh one every render
+  // would re-render every consumer on every parent render — which here means
+  // every tile in the grid, on a page that is otherwise entirely static.
+  const state = useMemo(
+    () => ({ leaving, href: leavingHref }),
+    [leaving, leavingHref],
+  );
+
   return (
-    <LeavingContext.Provider value={leaving}>{children}</LeavingContext.Provider>
+    <LeavingContext.Provider value={state}>{children}</LeavingContext.Provider>
   );
 }
 

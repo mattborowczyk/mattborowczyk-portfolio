@@ -159,7 +159,26 @@ let failed = false;
 
 try {
   const home = await warm("/");
-  const routes = ["/", await firstProductPath(home)];
+  // Both arrangements of the archive, each named outright, because they are
+  // different pages as far as the budget is concerned. The run puts one or two
+  // pieces in the opening viewport; the grid puts a feature tile and its
+  // neighbours there, and `loading="lazy"` buys nothing for anything above the
+  // fold.
+  //
+  // `/` alone cannot cover both, and neither can `/` plus the grid: which
+  // arrangement a bare `/` renders is `defaultArchiveView` in Site Settings,
+  // flipped from the CMS without a deploy, so it can differ between two runs of
+  // the same commit — and when the default *is* the grid, `/` and `/?view=grid`
+  // are the same page and the run goes unmeasured. `resolveView` honours either
+  // param whichever way the setting points, so naming both is the only way to
+  // measure both. `/` stays as well: it is the address visitors actually load,
+  // and it duplicating one of the other two is a cheap variance check.
+  const routes = [
+    "/",
+    "/?view=archive",
+    "/?view=grid",
+    await firstProductPath(home),
+  ];
   if (await exists("/course")) routes.push("/course");
   else console.log("skip   /course".padEnd(35) + "route not available");
 

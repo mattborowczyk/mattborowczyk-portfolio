@@ -186,6 +186,44 @@
     --hover-card-width: clamp(10.5rem, 18vw, 14.75rem);
     --hover-card-overlap: 2.5rem;
     --topbar-height: 7.25rem; /* 116px — mobile bar + breathing room */
+    /* The footer strip's height, which the content has to be padded by on
+       desktop because the footer is fixed there rather than in flow. One line
+       of 10px mono between `py-lg` above and below, plus its hairline. Measured
+       rather than guessed; if the strip ever gains a line, this moves with it or
+       the last of the content goes under it. */
+    --footer-height: 5rem; /* 80px */
+
+    /* ── Catalogue grid ────────────────────────────────────────────────
+       The composed lattice at `/?view=grid`. Compositions live in
+       lib/grid-pattern.ts; these are the measurements they are drawn at.
+
+       `--grid-ratio` is the *lattice's* ratio, not any one tile's: it sets how
+       tall a row is, so every row lines up whatever ratio the pieces in it
+       happen to be. 0.8 matches the product page's `aspect-[4/5]`, so a piece
+       does not change shape as you click through to it.
+
+       The two gaps are deliberately far apart. The horizontal one is the gap
+       between two images; the vertical one has to hold a caption as well —
+       name, reference and price, up to two lines of name — and then leave
+       enough air that a caption reads as belonging to the piece above it
+       rather than floating between two rows. Sized so the last row's caption
+       has the same room as any other; see `height` on `.piece-grid`. */
+    --grid-ratio: 0.8;
+    --grid-gap: clamp(0.75rem, 1.6vw, 1.375rem); /* 12 → 22px */
+    /* The vertical gap holds a caption and then some air. It was 72→152px,
+       which at a wide window put most of a tile's height of nothing between
+       every pair of rows — the rows stopped reading as a grid and started
+       reading as a list of separate things. */
+    --grid-gap-y: clamp(3.25rem, 4.5vw, 5.5rem); /* 52 → 88px */
+    /* Where the ladder stops.
+    
+       The ladder is built around a tile that never exceeds ~215px: each
+       breakpoint below is the width at which the current column count would
+       push a tile past that, so the next column takes over instead. Six
+       columns reaching 215px is 1408px of grid, and that is the end of it —
+       past here the grid keeps this size and centres, rather than growing
+       tiles that have already been decided to be as large as they should get. */
+    --grid-max: 88rem; /* 1408px — six 215px columns and their gaps */
 
     /* ── Draft banner ──────────────────────────────────────────────────
        The banner is fixed across the top, so it would sit over the nav
@@ -280,5 +318,215 @@
       rgba(40, 40, 35, 0.05) 0 1px,
       transparent 1px 14px
     );
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     CATALOGUE GRID
+     ───────────────────────────────────────────────────────────────────
+     Real CSS rather than utilities, for three reasons that are all the
+     same reason: none of this can be expressed as a class.
+
+     It is sized by **container query, not viewport**. The viewport is the
+     wrong ruler here — above the `nav` breakpoint the two rails take a
+     fixed 358px out of it, so a 1200px window gives the grid barely 800px
+     and a viewport breakpoint at 1200px would be wrong by a whole column.
+     It would go wrong again the day a rail changes width, and again inside
+     the Studio's Presentation iframe. Asking the grid how wide *it* is can
+     only ever be right.
+
+     Note the wrapper. An element cannot query itself, so `.grid-frame`
+     declares the containment and `.piece-grid` inside it does the asking.
+     `cqw` on the tiles resolves against the frame, and the grid is 100% of
+     the frame, so the two are interchangeable.
+
+     Tiles are positioned by `transform`, not by grid placement. Grid
+     placement is not animatable and `transform` is, which is what lets a
+     filter change move the survivors into the gaps rather than cutting to
+     the new arrangement.
+
+     Every tile carries its position for all five column counts as inline
+     custom properties, and the queries below choose which set is live. It
+     is verbose in the markup and it is what keeps the whole thing static:
+     the alternative is measuring the container in JS, which cannot run
+     during a prerender, so the server would guess a column count and
+     hydration would correct it — a layout shift on the one route whose CLS
+     budget is 0.
+     ═══════════════════════════════════════════════════════════════════ */
+
+  .grid-frame {
+    container-type: inline-size;
+    max-width: var(--grid-max);
+    margin-inline: auto;
+    width: 100%;
+  }
+
+  .piece-grid {
+    position: relative;
+    width: 100%;
+    /* The 2-column base. Each query below overrides all three together —
+       column count, row count and the per-tile placement set — because a
+       count from one breakpoint with placements from another is a pile-up. */
+    --cols: 2;
+    --rows: var(--grid-rows-2);
+    --col: calc(
+      (100cqw - (var(--cols) - 1) * var(--grid-gap)) / var(--cols)
+    );
+    --row: calc(var(--col) / var(--grid-ratio));
+    /* A trailing vertical gap rather than `(rows - 1)`: the last row's
+       caption hangs below its image like every other, and without the extra
+       row of space it would hang out of the grid and into the footer. */
+    height: calc(var(--rows) * (var(--row) + var(--grid-gap-y)));
+    /* A piece filtered out of the grid keeps its last position while it fades,
+       and that position can sit below the shorter arrangement it is leaving —
+       an invisible tile is still scrollable overflow, so without this the page
+       would grow a stretch of empty scroll after a filter. `clip` rather than
+       `hidden` because `hidden` makes a scroll container, which would trap the
+       page's own scrolling. The margin is for the focus ring, which is drawn
+       2px outside a tile and would otherwise lose its outer edge at the
+       boundary. */
+    overflow: clip;
+    overflow-clip-margin: 0.5rem;
+    /* The box only ever closes up *after* a filter has finished rearranging —
+       `heldRows` in catalogue-grid.tsx keeps it open until then, so nothing is
+       clipped mid-movement. By the time this runs there is nothing left to see
+       inside the space being reclaimed, and the transition is what stops the
+       page under the grid jumping up by several hundred pixels in one frame. */
+    transition: height var(--duration-slow) ease;
+  }
+
+  .piece-tile {
+    position: absolute;
+    top: 0;
+    left: 0;
+    --c: var(--c-2);
+    --r: var(--r-2);
+    --cs: var(--cs-2);
+    --rs: var(--rs-2);
+    --ar: var(--ar-2);
+    width: calc(var(--cs) * var(--col) + (var(--cs) - 1) * var(--grid-gap));
+    transform: translate3d(
+      calc(var(--c) * (var(--col) + var(--grid-gap))),
+      calc(var(--r) * (var(--row) + var(--grid-gap-y))),
+      0
+    );
+    /* Position only. Opacity is transitioned on the body inside, because the
+       two want different timings at the same moment: when a filter changes,
+       the pieces leaving fade in 180ms while the pieces staying take the whole
+       500ms of `--duration-slow` to travel into the gaps they left. One
+       `transition-duration` on one element cannot say both.
+
+       `--move-delay` is set from React and is 0 for every tile as things
+       stand: the travel is what the filter change is meant to be read as, so
+       it starts with the fade rather than a beat after it. The property is
+       still routed through here because the delay is a per-tile decision made
+       in catalogue-grid.tsx (`moveDelayMs`), and this is where it lands. */
+    transition-property: transform, width;
+    transition-duration: var(--duration-slow);
+    transition-delay: var(--move-delay, 0ms);
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Everything drawn inside a tile: the image and the caption under it. Carries
+     the opacity, so a tile can be fading while it moves, at its own rate.
+     `--fade-*` are set per tile from React — the exit stagger is a function of
+     how far a tile is from the one that was clicked, which is a distance only
+     measurable at the moment of the click. */
+  .piece-tile-body {
+    transition-property: opacity;
+    transition-duration: var(--fade-duration, var(--duration-base));
+    transition-delay: var(--fade-delay, 0ms);
+    transition-timing-function: ease;
+  }
+
+  /* Height comes from the lattice, not from `aspect-ratio`, and that is a fix
+     rather than a preference.
+
+     A feature is two rows tall, but sized by its ratio it came out only
+     `2·col/ar` high while the two row slots it occupies are `2·(row + gap-y)`.
+     The difference — a whole vertical gap, which at a wide window was some
+     270px — appeared as dead space under every feature, and under nothing
+     else, which is why it read as a bug rather than as rhythm.
+
+     One expression covers both cases. At `--rs: 1` it reduces to `col / ar`,
+     which is exactly the tile's own ratio; at `--rs: 2` it is two rows plus the
+     one gap between them, so the space *below* a feature is the same gap that
+     follows any other tile. `--ar` still decides the shape of a single tile,
+     so a composition that varies ratios keeps working. */
+  .piece-tile-media {
+    position: relative;
+    width: 100%;
+    height: calc(
+      var(--rs) * var(--col) / var(--ar) + (var(--rs) - 1) * var(--grid-gap-y)
+    );
+    overflow: hidden;
+  }
+
+  /* While the grid is working out how wide it is, nothing animates.
+
+     Container queries are answered after layout, so the first style pass uses
+     the two-column fallback and the second corrects it. Left alone, that
+     correction runs through the transitions below — every tile slides from
+     where it never really was, and the grid resizes under them. These rules
+     out-specify the transitions rather than fighting them with `!important`. */
+  .piece-grid[data-settling],
+  .piece-grid[data-settling] .piece-tile,
+  .piece-grid[data-settling] .piece-tile-body {
+    transition: none;
+  }
+
+  @container (min-width: 28rem) {
+    .piece-grid {
+      --cols: 3;
+      --rows: var(--grid-rows-3);
+    }
+    .piece-tile {
+      --c: var(--c-3);
+      --r: var(--r-3);
+      --cs: var(--cs-3);
+      --rs: var(--rs-3);
+      --ar: var(--ar-3);
+    }
+  }
+
+  @container (min-width: 43rem) {
+    .piece-grid {
+      --cols: 4;
+      --rows: var(--grid-rows-4);
+    }
+    .piece-tile {
+      --c: var(--c-4);
+      --r: var(--r-4);
+      --cs: var(--cs-4);
+      --rs: var(--rs-4);
+      --ar: var(--ar-4);
+    }
+  }
+
+  @container (min-width: 58rem) {
+    .piece-grid {
+      --cols: 5;
+      --rows: var(--grid-rows-5);
+    }
+    .piece-tile {
+      --c: var(--c-5);
+      --r: var(--r-5);
+      --cs: var(--cs-5);
+      --rs: var(--rs-5);
+      --ar: var(--ar-5);
+    }
+  }
+
+  @container (min-width: 73rem) {
+    .piece-grid {
+      --cols: 6;
+      --rows: var(--grid-rows-6);
+    }
+    .piece-tile {
+      --c: var(--c-6);
+      --r: var(--r-6);
+      --cs: var(--cs-6);
+      --rs: var(--rs-6);
+      --ar: var(--ar-6);
+    }
   }
 }

@@ -13,6 +13,21 @@ import { BASE_URL } from "@/lib/site";
  *
  * Pieces are made to order and "buy" is a commission enquiry, not a checkout,
  * so the offer is marked `PreOrder` rather than `InStock`.
+ *
+ * ── Deliberately not mapped: `unique` ──────────────────────────────────────
+ *
+ * The `unique` flag added for the grid (rendered there as `1/1`) is checked
+ * against this mapping, as the rule above requires, and left out of it on
+ * purpose — recorded here so the next person does not have to re-derive the
+ * answer, or worse, assume it was an oversight.
+ *
+ * schema.org `Product` has no edition or one-of-a-kind property. The only place
+ * it could go is a generic `additionalProperty`, which no consumer reads and no
+ * rich result surfaces, so it would add markup that makes a claim nothing can
+ * check in exchange for nothing at all. The same instinct as `offerPrice`
+ * below: this file publishes what it can stand behind and stays quiet
+ * otherwise. If schema.org ever gains a real property for it, this is where it
+ * goes.
  */
 
 /**
